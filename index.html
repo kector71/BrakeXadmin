@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Brake X Admin</title>
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Outlined" rel="stylesheet">
+    
+    <link rel="stylesheet" href="admin-styles.css">
+</head>
+<body>
+
+    <div class="app-layout"> 
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <span class="material-icons-outlined logo-icon">speed</span>
+                <span class="logo-text">Brake X Admin</span>
+            </div>
+            <nav class="nav-menu">
+                <a href="#" class="nav-item active" data-section="dashboard">
+                    <span class="material-icons-outlined">dashboard</span>
+                    <span>Dashboard</span>
+                </a>
+                <a href="#" class="nav-item" data-section="edit-pad">
+                    <span class="material-icons-outlined">edit_note</span>
+                    <span>Añadir / Editar</span>
+                </a>
+                <a href="#" class="nav-item" data-section="export-data">
+                    <span class="material-icons-outlined">file_download</span>
+                    <span>Exportar Datos</span>
+                </a>
+                <a href="#" class="nav-item" data-section="settings">
+                    <span class="material-icons-outlined">settings</span>
+                    <span>Configuración</span>
+                </a>
+            </nav>
+        </aside>
+
+        <main class="main-content">
+            <header class="content-header">
+                <h1 id="page-title">Dashboard</h1>
+            </header>
+
+            <div class="content-wrapper">
+                
+                <div id="dashboard" class="content-section active">
+                    <div class="card-grid cols-2">
+                        <div class="stat-card accent-blue">
+                            <span class="material-icons-outlined stat-icon">inventory_2</span>
+                            <div class="stat-info">
+                                <span class="stat-value" id="pad-count-dashboard">0</span> 
+                                <span class="stat-label">Pastillas Cargadas</span>
+                            </div>
+                        </div>
+                        <div class="stat-card accent-green">
+                            <span class="material-icons-outlined stat-icon">app_registration</span>
+                             <div class="stat-info">
+                                <span class="stat-value" id="apps-total-dashboard">0</span> 
+                                <span class="stat-label">Aplicaciones Totales</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card">
+                        <h2 class="card-title">Cargar `data.json` Existente</h2>
+                        <p class="card-description">Carga tu archivo <strong>data.json</strong> actual para empezar a añadir o modificar datos.</p>
+                        <div class="file-upload-wrapper">
+                            <input type="file" id="file-import" accept=".json" class="file-input">
+                            <label for="file-import" class="btn btn-secondary file-btn">
+                                <span class="material-icons-outlined">upload_file</span> Seleccionar archivo...
+                            </label>
+                            <span id="file-name" class="file-name">Ningún archivo.</span>
+                        </div>
+                        <span id="import-status" class="status-message"></span>
+                    </div>
+                </div>
+
+                <div id="edit-pad" class="content-section">
+                    <div class="card">
+                         <h2 class="card-title">Buscar Pastilla para Editar</h2>
+                         <div class="form-group">
+                             <label for="search-ref" class="input-label">Buscar por Referencia</label>
+                             <div class="search-wrapper">
+                                 <input type="text" id="search-ref" class="text-input" placeholder="Ej: BX-1234">
+                                 <button id="search-btn" class="btn btn-secondary search-btn"> <span class="material-icons-outlined">search</span> </button>
+                             </div>
+                         </div>
+                         <div id="search-results" class="search-results-container"></div>
+                         <button id="clear-search-btn" class="btn btn-outline" style="display: none;">Limpiar Formulario</button>
+                    </div>
+                    <div class="card">
+                        <h2 class="card-title" id="form-mode-title">Añadir Nueva Pastilla</h2>
+                        <form id="pad-form-main" class="form-grid">
+                           <input type="hidden" id="edit-index" value="-1">
+                            <div class="form-group span-2"> <label for="pad-ref" class="input-label">Referencias (,)</label> <input type="text" id="pad-ref" class="text-input" required> </div>
+                            <div class="form-group"> <label for="pad-oem" class="input-label">OEM (,)</label> <input type="text" id="pad-oem" class="text-input"> </div>
+                            <div class="form-group"> <label for="pad-fmsi" class="input-label">FMSI (,)</label> <input type="text" id="pad-fmsi" class="text-input"> </div>
+                            <div class="form-group"> <label for="pad-posicion" class="input-label">Posición</label> <select id="pad-posicion" class="select-input"> <option value="Delantera">Delantera</option> <option value="Trasera">Trasera</option> </select> </div>
+                            <div class="form-group"> <label for="pad-medidas" class="input-label">Medidas (Ancho x Alto)</label> <input type="text" id="pad-medidas" class="text-input" placeholder="Ej: 131.5 x 52.5"> </div>
+                            <div class="form-group span-2"> <label for="pad-imagenes" class="input-label">URLs Imágenes (,)</label> <input type="text" id="pad-imagenes" class="text-input" placeholder="url1.jpg, url2.jpg, ..."> </div>
+                        </form>
+                    </div>
+                    <div class="card">
+                        <h2 class="card-title">Aplicaciones (Vehículos)</h2>
+                         <p class="card-description" id="app-form-description">Añade vehículos compatibles.</p>
+                        <form id="app-form" class="form-grid cols-2">
+                             <input type="hidden" id="editing-app-index" value="-1">
+                             <div class="form-group"> <label for="app-marca" class="input-label">Marca</label> <input type="text" id="app-marca" class="text-input" required> </div>
+                             <div class="form-group"> <label for="app-serie" class="input-label">Serie / Modelo</label> <input type="text" id="app-serie" class="text-input" required> </div>
+                             <div class="form-group"> <label for="app-litros" class="input-label">Litros / Motor</label> <input type="text" id="app-litros" class="text-input"> </div>
+                             <div class="form-group"> <label for="app-anio" class="input-label">Año(s)</label> <input type="text" id="app-anio" class="text-input" placeholder="2018-2022"> </div>
+                             <div class="form-group span-2"> <label for="app-especificacion" class="input-label">Especificación</label> <input type="text" id="app-especificacion" class="text-input" placeholder="Opcional"> </div>
+                             <div class="form-group span-2 button-group">
+                                <button id="add-update-app-btn" class="btn btn-tertiary"> <span class="material-icons-outlined">add_circle</span> <span id="add-app-button-text">Añadir App</span> </button>
+                                <button type="button" id="cancel-edit-app-btn" class="btn btn-outline" style="display: none;"> <span class="material-icons-outlined">cancel</span> Cancelar Edición </button>
+                             </div>
+                        </form>
+                        <h3 class="list-title">Aplicaciones Actuales / Añadidas:</h3>
+                        <ul id="current-apps-list" class="app-list"> <li class="empty-list">Ninguna todavía</li> </ul>
+                    </div>
+                    <button id="save-pad-btn" class="btn btn-primary btn-cta"> <span class="material-icons-outlined">save</span> <span id="save-button-text">Guardar Pastilla</span> </button>
+                </div>
+
+                <div id="export-data" class="content-section">
+                     <div class="card">
+                        <h2 class="card-title">Generar y Descargar `data.json`</h2>
+                        <p class="card-description">Descarga el archivo <strong>data.json</strong> con todos los cambios.</p>
+                        <button id="generate-download-btn" class="btn btn-primary"> <span class="material-icons-outlined">file_download</span> Descargar JSON </button>
+                        <span id="download-status" class="status-message"></span>
+                    </div>
+                    <div class="card">
+                        <h2 class="card-title">Previsualización del JSON</h2>
+                        <textarea id="json-output" readonly class="text-area-output" placeholder="Presiona 'Descargar JSON' para generar..."></textarea>
+                        <button id="copy-json-btn" class="btn btn-secondary"> <span class="material-icons-outlined">content_copy</span> Copiar </button>
+                        <span id="copy-status" class="status-message"></span>
+                    </div>
+                </div>
+
+                <div id="settings" class="content-section">
+                    <div class="card">
+                        <h2 class="card-title">Configuración de Sesión</h2>
+                        <p class="card-description">Borra todas las pastillas cargadas en esta sesión.</p>
+                        <button id="clear-all-btn" class="btn btn-danger"> <span class="material-icons-outlined">delete_sweep</span> Limpiar Sesión </button>
+                    </div>
+                </div>
+            </div> 
+        </main>
+    </div> 
+
+     <div class="floating-buttons-container right">
+        <button class="material-btn" id="darkBtn" aria-label="Cambiar modo oscuro" aria-pressed="false">
+            <svg class="lp-icon-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="4"></line><line x1="12" y1="20" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="6.34" y2="6.34"></line><line x1="17.66" y1="17.66" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="4" y2="12"></line><line x1="20" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="6.34" y2="17.66"></line><line x1="17.66" y1="6.34" x2="19.78" y2="4.22"></line></svg>
+            <svg class="lp-icon-moon" viewBox="0 0 24 24" style="opacity:0;"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
+        </button>
+    </div>
+
+    <script src="admin-script.js"></script>
+</body>
+</html>
