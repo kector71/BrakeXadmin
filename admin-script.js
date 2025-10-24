@@ -3,16 +3,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // ----- VARIABLES GLOBALES -----
     let masterPadList = [];
-    let currentApps = []; 
-    let editIndex = -1; 
+    let currentApps = [];
+    let editIndex = -1;
     let editingAppIndex = -1;
     let totalAppsInList = 0;
 
     // ----- DOM ELEMENTS -----
-    let els = {}; 
+    let els = {};
     try {
-        console.log("Attempting to obtain DOM elements..."); 
-        els = { 
+        console.log("Attempting to obtain DOM elements...");
+        els = {
             navItems: document.querySelectorAll('.nav-item'),
             contentSections: document.querySelectorAll('.content-section'),
             pageTitle: document.getElementById('page-title'),
@@ -59,221 +59,325 @@ document.addEventListener('DOMContentLoaded', () => {
             sunIcon: document.querySelector('.lp-icon-sun'),
             moonIcon: document.querySelector('.lp-icon-moon'),
         };
-        if (!els.pageTitle) { throw new Error("Elemento 'page-title' no encontrado."); }
-        console.log("DOM elements obtained successfully."); 
+        // Verificación básica de que los elementos existen
+        if (!els.pageTitle || !els.navItems || !els.contentSections) {
+             throw new Error("Elementos esenciales del layout no encontrados.");
+        }
+        console.log("DOM elements obtained successfully.");
     } catch (error) {
-        console.error("Error obtaining DOM elements:", error); 
+        console.error("Error obtaining DOM elements:", error);
         alert("Error crítico: No se encontraron elementos HTML necesarios. Revisa IDs y la consola (F12).");
-        return; 
+        return; // Detiene la ejecución si faltan elementos clave
     }
 
     // ----- FUNCIONES -----
 
-    // Función para cambiar de sección (Dashboard, Editar, etc.)
     const setActiveSection = (sectionId) => {
-        if (!sectionId) {
-            console.warn("setActiveSection llamada sin sectionId");
+        if (!sectionId || typeof sectionId !== 'string') { // Validación de entrada
+            console.warn("setActiveSection llamada sin un ID de sección válido:", sectionId);
             return;
         }
-        
-        // Ocultar todas las secciones
+
         els.contentSections?.forEach(section => {
             section.classList.remove('active');
         });
 
-        // Marcar el item de nav como activo
         els.navItems?.forEach(item => {
-            item.classList.toggle('active', item.dataset.section === sectionId);
+            // Asegurarse que item.dataset existe y tiene la propiedad section
+            if (item.dataset && typeof item.dataset.section !== 'undefined') {
+                item.classList.toggle('active', item.dataset.section === sectionId);
+            }
         });
 
-        // Mostrar la sección correcta
         const activeSection = document.getElementById(sectionId);
         if (activeSection) {
             activeSection.classList.add('active');
-            // Actualizar título de la página
             const navItem = document.querySelector(`.nav-item[data-section="${sectionId}"]`);
             if (els.pageTitle && navItem) {
-                els.pageTitle.textContent = navItem.querySelector('span:last-child').textContent;
+                const titleSpan = navItem.querySelector('span:last-child');
+                if (titleSpan) {
+                     els.pageTitle.textContent = titleSpan.textContent || 'Admin'; // Fallback title
+                }
             }
         } else {
-            console.error(`Sección con ID '${sectionId}' no encontrada.`);
-            document.getElementById('dashboard')?.classList.add('active'); // Fallback a dashboard
+            console.error(`Sección con ID '${sectionId}' no encontrada. Volviendo a dashboard.`);
+            // Intenta volver a dashboard de forma segura
+            const dashboardSection = document.getElementById('dashboard');
+            if (dashboardSection) {
+                 dashboardSection.classList.add('active');
+                 // Actualiza el item de navegación también
+                 els.navItems?.forEach(item => {
+                     if (item.dataset && typeof item.dataset.section !== 'undefined') {
+                         item.classList.toggle('active', item.dataset.section === 'dashboard');
+                     }
+                 });
+                 if(els.pageTitle){ // Actualiza titulo
+                     const dashboardNavItem = document.querySelector(`.nav-item[data-section="dashboard"] span:last-child`);
+                     if(dashboardNavItem) els.pageTitle.textContent = dashboardNavItem.textContent || 'Dashboard';
+                 }
+
+            } else {
+                 console.error("¡Sección de Dashboard tampoco encontrada!");
+                 // Podrías mostrar un error al usuario aquí
+            }
         }
     };
 
-    // Resetea el formulario de añadir aplicación
     const resetAppForm = () => {
-        els.appForm.reset();
-        els.editingAppIndexInput.value = "-1";
+        if (els.appForm) els.appForm.reset();
+        if (els.editingAppIndexInput) els.editingAppIndexInput.value = "-1";
         editingAppIndex = -1;
-        els.addAppButtonText.textContent = "Añadir App";
-        els.addUpdateAppBtn.classList.remove('btn-secondary');
-        els.addUpdateAppBtn.classList.add('btn-tertiary');
-        els.cancelEditAppBtn.style.display = 'none';
-        els.appFormDescription.textContent = "Añade vehículos compatibles.";
+        if (els.addAppButtonText) els.addAppButtonText.textContent = "Añadir App";
+        if (els.addUpdateAppBtn) {
+            els.addUpdateAppBtn.classList.remove('btn-secondary'); // secondary is now outline
+            els.addUpdateAppBtn.classList.add('btn-tertiary'); // tertiary is green
+        }
+        if (els.cancelEditAppBtn) els.cancelEditAppBtn.style.display = 'none';
+        if (els.appFormDescription) els.appFormDescription.textContent = "Añade vehículos compatibles.";
     };
 
-    // Resetea todos los formularios y el modo de edición
     const resetFormsAndMode = () => {
-        els.padFormMain.reset();
-        els.editIndexInput.value = "-1";
+        if (els.padFormMain) els.padFormMain.reset();
+        if (els.editIndexInput) els.editIndexInput.value = "-1";
         editIndex = -1;
-        currentApps = [];
-        
-        els.formModeTitle.textContent = "Añadir Nueva Pastilla";
-        els.saveButtonText.textContent = "Guardar Pastilla";
-        els.savePadBtn.classList.remove('btn-secondary');
-        els.savePadBtn.classList.add('btn-primary');
+        currentApps = []; // Resetea la lista de apps temporal
 
-        els.searchRef.value = '';
-        els.searchResults.innerHTML = '';
-        els.clearSearchBtn.style.display = 'none';
+        if (els.formModeTitle) els.formModeTitle.textContent = "Añadir Nueva Pastilla";
+        if (els.saveButtonText) els.saveButtonText.textContent = "Guardar Pastilla";
+        if (els.savePadBtn) {
+            els.savePadBtn.classList.remove('btn-secondary'); // Ensure it's not outline
+            els.savePadBtn.classList.add('btn-primary'); // primary is blue
+        }
 
-        resetAppForm();
-        renderCurrentApps(); // Para mostrar "Ninguna todavía"
+        if (els.searchRef) els.searchRef.value = '';
+        if (els.searchResults) els.searchResults.innerHTML = '';
+        if (els.clearSearchBtn) els.clearSearchBtn.style.display = 'none';
+
+        resetAppForm(); // Llama a resetear el form de apps
+        renderCurrentApps(); // Actualiza la lista de apps (mostrará "Ninguna")
     };
 
-    // Calcula el total de aplicaciones en la lista maestra
-    const calculateTotalApps = () => masterPadList.reduce((t, p) => t + (p.aplicaciones?.length || 0), 0);
+    const calculateTotalApps = () => {
+        if (!Array.isArray(masterPadList)) return 0; // Asegurarse que es un array
+        return masterPadList.reduce((total, pad) => {
+             // Verificar que pad sea un objeto y tenga 'aplicaciones' como array
+            const appsLength = (pad && Array.isArray(pad.aplicaciones)) ? pad.aplicaciones.length : 0;
+            return total + appsLength;
+        }, 0);
+    };
 
-    // Actualiza las estadísticas del Dashboard
+
     const updateDashboardStats = () => {
         totalAppsInList = calculateTotalApps();
         if (els.padCountDashboard) {
-            els.padCountDashboard.textContent = masterPadList.length;
+            els.padCountDashboard.textContent = Array.isArray(masterPadList) ? masterPadList.length : 0;
         }
         if (els.appsTotalDashboard) {
             els.appsTotalDashboard.textContent = totalAppsInList;
         }
     };
 
-    // Muestra un mensaje de estado temporal
     const showStatus = (element, message, isError = false, duration = 4000) => {
-        if (!element) return;
+        if (!element) {
+             console.warn("showStatus: Elemento no encontrado para mostrar mensaje:", message);
+             return;
+        }
         element.textContent = message;
-        element.className = 'status-message'; // Reset classes
+        element.className = 'status-message'; // Reset classes first
         element.classList.add(isError ? 'error' : 'success');
-        
-        setTimeout(() => {
-            element.textContent = '';
-            element.className = 'status-message';
+
+        // Clear previous timeout if exists to prevent message flickering
+        if (element.timeoutId) {
+             clearTimeout(element.timeoutId);
+        }
+
+        element.timeoutId = setTimeout(() => {
+            if(element) { // Check if element still exists
+                 element.textContent = '';
+                 element.className = 'status-message';
+                 delete element.timeoutId; // Clean up the property
+            }
         }, duration);
     };
 
-    // Genera el string JSON formateado
     const generateJsonString = () => {
-        if (masterPadList.length === 0) return '[]'; 
-        
-        // Ordenar alfabéticamente por la primera referencia
-        masterPadList.sort((a, b) => {
-            const refA = a.ref[0]?.toLowerCase() || '';
-            const refB = b.ref[0]?.toLowerCase() || '';
-            return refA.localeCompare(refB);
+        if (!Array.isArray(masterPadList) || masterPadList.length === 0) return '[]';
+
+        // Crear una copia antes de ordenar
+        const sortedList = [...masterPadList];
+
+        sortedList.sort((a, b) => {
+            // Manejo defensivo por si 'ref' no existe o no es array o no es string
+            const refA = (a && Array.isArray(a.ref) && a.ref.length > 0 && typeof a.ref[0] === 'string') ? a.ref[0].toLowerCase() : '';
+            const refB = (b && Array.isArray(b.ref) && b.ref.length > 0 && typeof b.ref[0] === 'string') ? b.ref[0].toLowerCase() : '';
+            // localeCompare con options para manejar números dentro de strings mejor
+            return refA.localeCompare(refB, undefined, { numeric: true, sensitivity: 'base' });
         });
 
-        const compactJson = JSON.stringify(masterPadList); 
-        // Añade un salto de línea después de cada objeto '}' para legibilidad
-        const formattedJson = compactJson.replace(/},{/g, '},\n{');
-        return formattedJson;
+        try {
+            // Siempre generar compacto para la descarga
+            const compactJson = JSON.stringify(sortedList);
+            return compactJson;
+        } catch (err) {
+            console.error("Error al convertir a JSON:", err);
+            showStatus(els.downloadStatus, `Error interno al generar JSON: ${err.message}`, true);
+            return '[]'; // Devuelve array vacío en caso de error
+        }
     };
 
-    // Dibuja la lista de aplicaciones actuales en el formulario
+    // Función para mostrar el JSON formateado en el textarea
+    const displayFormattedJson = (compactJsonString) => {
+        if (!els.jsonOutput) return;
+        try {
+            // Intenta parsear el JSON compacto y luego re-stringify con formato
+            const parsedData = JSON.parse(compactJsonString);
+            els.jsonOutput.value = JSON.stringify(parsedData, null, 2); // Formateado con 2 espacios
+        } catch (e) {
+             console.error("Error formateando JSON para vista previa:", e);
+            // Si falla (ej. si ya era '[]' o inválido), muestra el string original
+            els.jsonOutput.value = compactJsonString;
+        }
+    };
+
+
     const renderCurrentApps = () => {
         if (!els.currentAppsList) return;
-        
-        if (currentApps.length === 0) {
+
+        if (!Array.isArray(currentApps) || currentApps.length === 0) {
             els.currentAppsList.innerHTML = '<li class="empty-list">Ninguna todavía</li>';
             return;
         }
 
-        els.currentAppsList.innerHTML = currentApps.map((app, index) => `
-            <li>
-                <div class="app-info">
-                    <strong>${app.marca} ${app.serie}</strong>
-                    <span class="app-details">
-                        ${[app.litros, app.anio, app.espec].filter(Boolean).join(' | ')}
-                    </span>
-                </div>
-                <div class="app-actions">
-                    <button type="button" class="app-action-btn edit-app-btn" data-index="${index}" title="Editar App">
-                        <span class="material-icons-outlined">edit</span>
-                    </button>
-                    <button type="button" class="app-action-btn remove-app-btn" data-index="${index}" title="Eliminar App">
-                        <span class="material-icons-outlined">delete_forever</span>
-                    </button>
-                </div>
-            </li>
-        `).join('');
+        els.currentAppsList.innerHTML = currentApps.map((app, index) => {
+             // Comprobaciones defensivas para los datos de 'app'
+            const marca = app?.marca || '';
+            const serie = app?.serie || '';
+            const litros = app?.litros || '';
+            const anio = app?.anio || '';
+            const espec = app?.espec || '';
+            const details = [litros, anio, espec].filter(Boolean).join(' | ');
+
+            return `
+                <li>
+                    <div class="app-info">
+                        <strong>${marca} ${serie}</strong>
+                        ${details ? `<span class="app-details">${details}</span>` : ''}
+                    </div>
+                    <div class="app-actions">
+                        <button type="button" class="app-action-btn edit-app-btn" data-index="${index}" title="Editar App">
+                            <span class="material-icons-outlined">edit</span>
+                        </button>
+                        <button type="button" class="app-action-btn remove-app-btn" data-index="${index}" title="Eliminar App">
+                            <span class="material-icons-outlined">delete_forever</span>
+                        </button>
+                    </div>
+                </li>
+            `;
+            }).join('');
     };
 
-    // Carga los datos de una aplicación en el formulario de apps para editarla
+
     const loadAppDataIntoForm = (index) => {
+        if (!Array.isArray(currentApps) || index < 0 || index >= currentApps.length) {
+            console.warn("loadAppDataIntoForm: Índice inválido o lista de apps no es array");
+            return;
+        }
         const app = currentApps[index];
-        if (!app) return;
+        if (!app) {
+             console.warn("loadAppDataIntoForm: No se encontró la app en el índice", index);
+             return;
+        }
+
 
         editingAppIndex = index;
-        els.editingAppIndexInput.value = index;
-        
-        els.appMarca.value = app.marca || '';
-        els.appSerie.value = app.serie || '';
-        els.appLitros.value = app.litros || '';
-        els.appAnio.value = app.anio || '';
-        els.appEspec.value = app.espec || '';
-        
-        els.addAppButtonText.textContent = "Actualizar App";
-        els.addUpdateAppBtn.classList.remove('btn-tertiary');
-        els.addUpdateAppBtn.classList.add('btn-secondary'); // Cambia color a azul
-        els.cancelEditAppBtn.style.display = 'inline-flex';
-        els.appFormDescription.textContent = `Editando: ${app.marca} ${app.serie}`;
-        
-        els.appMarca.focus(); // Pone el foco en el primer campo
+        if (els.editingAppIndexInput) els.editingAppIndexInput.value = index;
+
+        if (els.appMarca) els.appMarca.value = app.marca || '';
+        if (els.appSerie) els.appSerie.value = app.serie || '';
+        if (els.appLitros) els.appLitros.value = app.litros || '';
+        if (els.appAnio) els.appAnio.value = app.anio || '';
+        if (els.appEspec) els.appEspec.value = app.espec || '';
+
+        if (els.addAppButtonText) els.addAppButtonText.textContent = "Actualizar App";
+        if (els.addUpdateAppBtn) {
+             // Secondary in Fluent is outline, use Tertiary (green) for add, Primary (blue) for update?
+             // Let's stick to Green for Add, Blue for Update
+             els.addUpdateAppBtn.classList.remove('btn-tertiary');
+             els.addUpdateAppBtn.classList.add('btn-primary'); // Use primary (blue) for Update
+        }
+        if (els.cancelEditAppBtn) els.cancelEditAppBtn.style.display = 'inline-flex';
+        if (els.appFormDescription) els.appFormDescription.textContent = `Editando: ${app.marca || ''} ${app.serie || ''}`;
+
+        if (els.appMarca) els.appMarca.focus();
     };
 
-    // Carga los datos de una pastilla completa en el formulario principal
     const loadPadDataIntoForms = (padData, index) => {
+         if (!padData || typeof padData !== 'object') {
+             console.error("loadPadDataIntoForms: padData inválido");
+             return;
+         }
         editIndex = index;
-        els.editIndexInput.value = index;
+        if (els.editIndexInput) els.editIndexInput.value = index;
 
-        els.padRef.value = padData.ref.join(', ');
-        els.padOem.value = padData.oem.join(', ');
-        els.padFmsi.value = padData.fmsi.join(', ');
-        els.padPosicion.value = padData.posicion || 'Delantera';
-        els.padMedidas.value = padData.medidas || '';
-        els.padImagenes.value = padData.img.join(', ');
-        
-        currentApps = JSON.parse(JSON.stringify(padData.aplicaciones || [])); // Copia profunda
-        
-        els.formModeTitle.textContent = `Editando Pastilla: ${padData.ref[0]}`;
-        els.saveButtonText.textContent = "Actualizar Pastilla";
-        els.savePadBtn.classList.remove('btn-primary');
-        els.savePadBtn.classList.add('btn-secondary'); // Color azul para modo edición
-        
-        els.clearSearchBtn.style.display = 'inline-flex';
-        els.searchResults.innerHTML = ''; // Limpia resultados de búsqueda
-        
+        // Asignaciones seguras
+        if (els.padRef) els.padRef.value = (Array.isArray(padData.ref) ? padData.ref : []).join(', ');
+        if (els.padOem) els.padOem.value = (Array.isArray(padData.oem) ? padData.oem : []).join(', ');
+        if (els.padFmsi) els.padFmsi.value = (Array.isArray(padData.fmsi) ? padData.fmsi : []).join(', ');
+        if (els.padPosicion) els.padPosicion.value = padData.posicion || 'Delantera';
+        if (els.padMedidas) els.padMedidas.value = padData.medidas || '';
+        if (els.padImagenes) els.padImagenes.value = (Array.isArray(padData.img) ? padData.img : []).join(', ');
+
+        currentApps = Array.isArray(padData.aplicaciones) ? JSON.parse(JSON.stringify(padData.aplicaciones)) : [];
+
+        const firstRef = (Array.isArray(padData.ref) && padData.ref.length > 0) ? padData.ref[0] : '';
+        if (els.formModeTitle) els.formModeTitle.textContent = `Editando Pastilla: ${firstRef}`;
+        if (els.saveButtonText) els.saveButtonText.textContent = "Actualizar Pastilla";
+        if (els.savePadBtn) {
+            els.savePadBtn.classList.remove('btn-primary'); // Remove blue
+            els.savePadBtn.classList.add('btn-primary'); // Keep blue for Update (as primary action here)
+        }
+
+        if (els.clearSearchBtn) els.clearSearchBtn.style.display = 'inline-flex';
+        if (els.searchResults) els.searchResults.innerHTML = '';
+
         renderCurrentApps();
-        resetAppForm();
-        
-        setActiveSection('edit-pad'); // Cambia a la pestaña de edición
-        els.padRef.focus(); // Pone el foco en el primer campo
+        resetAppForm(); // Ensure app form is reset when loading a pad
+
+        setActiveSection('edit-pad');
+        if (els.padRef) els.padRef.focus();
     };
 
-    // Función Ripple Effect (para botones)
-    const createRippleEffect = (event) => { 
-        const button = event.currentTarget; 
-        const circle = document.createElement('span'); 
-        const diameter = Math.max(button.clientWidth, button.clientHeight); 
-        const radius = diameter / 2; 
-        const rect = button.getBoundingClientRect(); 
-        circle.style.width = circle.style.height = `${diameter}px`; 
-        circle.style.left = `${event.clientX - (rect.left + radius)}px`; 
-        circle.style.top = `${event.clientY - (rect.top + radius)}px`; 
-        circle.classList.add('ripple'); 
-        const ripple = button.getElementsByClassName('ripple')[0]; 
-        if (ripple) ripple.remove(); 
-        button.appendChild(circle); 
-        // Remove ripple after animation
-        circle.addEventListener('animationend', () => circle.remove(), { once: true });
+    const createRippleEffect = (event) => {
+        const button = event.currentTarget;
+        // Ensure it's a button or element that should ripple
+        if (!button || typeof button.getBoundingClientRect !== 'function') return;
+
+        const circle = document.createElement('span');
+        const diameter = Math.max(button.clientWidth, button.clientHeight);
+        const radius = diameter / 2;
+        const rect = button.getBoundingClientRect();
+
+        circle.style.width = circle.style.height = `${diameter}px`;
+        const rippleX = event.clientX - rect.left - radius;
+        const rippleY = event.clientY - rect.top - radius;
+        circle.style.left = `${rippleX}px`;
+        circle.style.top = `${rippleY}px`;
+        circle.classList.add('ripple');
+
+        const existingRipple = button.querySelector('.ripple');
+        if (existingRipple) {
+            existingRipple.remove();
+        }
+
+        // Prepend instead of append to be behind the text/icon potentially
+        button.insertBefore(circle, button.firstChild);
+
+
+        circle.addEventListener('animationend', () => {
+            if (circle.parentNode) {
+                 circle.remove();
+            }
+        }, { once: true });
     };
 
     // ----- EVENT LISTENERS -----
@@ -281,328 +385,417 @@ document.addEventListener('DOMContentLoaded', () => {
         console.log("Adding event listeners...");
 
         // Navegación principal
-        els.navItems?.forEach(item => { 
-            item.addEventListener('click', (e) => { 
-                e.preventDefault(); 
-                setActiveSection(item.dataset.section); 
-            }); 
+        els.navItems?.forEach(item => {
+            item.addEventListener('click', (e) => {
+                e.preventDefault();
+                const section = item.dataset?.section;
+                if (section) {
+                    setActiveSection(section);
+                } else {
+                     console.warn("Nav item no tiene data-section:", item);
+                }
+            });
         });
 
-        // =============================================
-        //  ¡ARREGLO #2: CARGA DE ARCHIVO JSON!
-        // =============================================
-        els.fileImport?.addEventListener('change', (e) => {
-            const file = e.target.files[0];
-            if (!file) {
-                els.fileName.textContent = "Ningún archivo.";
-                return;
-            }
+        // Carga de archivo JSON
+        if (els.fileImport) {
+            els.fileImport.addEventListener('change', (e) => {
+                const file = e.target.files?.[0];
+                if (!file) {
+                    if (els.fileName) els.fileName.textContent = "Ningún archivo seleccionado.";
+                    // Optionally reset masterPadList if no file is selected after one was loaded
+                    // masterPadList = []; updateDashboardStats(); showStatus(...)
+                    return;
+                }
+                if (els.fileName) els.fileName.textContent = file.name;
 
-            els.fileName.textContent = file.name;
-            const reader = new FileReader();
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    try {
+                        const result = event.target?.result;
+                        if (typeof result !== 'string') throw new Error("Contenido del archivo no es texto.");
+                        const data = JSON.parse(result);
+                        if (!Array.isArray(data)) throw new Error("El JSON no es un array.");
 
-            reader.onload = (event) => {
-                try {
-                    const data = JSON.parse(event.target.result);
-                    if (Array.isArray(data)) {
                         masterPadList = data;
-                        updateDashboardStats(); // Actualiza los números
+                        updateDashboardStats();
                         showStatus(els.importStatus, `¡Éxito! Se cargaron ${masterPadList.length} pastillas.`, false);
                         console.log("Datos JSON cargados:", masterPadList);
-                    } else {
-                        throw new Error("El JSON no es un array.");
+                        // Limpiar resultados de búsqueda y formulario si se carga un nuevo archivo
+                        resetFormsAndMode();
+                        if (els.jsonOutput) els.jsonOutput.value = ''; // Limpiar vista previa JSON
+                    } catch (err) {
+                        console.error("Error al procesar JSON:", err);
+                        showStatus(els.importStatus, `Error: ${err.message}`, true);
+                        masterPadList = []; // Resetear en caso de error
+                        updateDashboardStats();
+                        if (els.fileName) els.fileName.textContent = file.name + " (Error)"; // Indicate error
+                        if (els.jsonOutput) els.jsonOutput.value = ''; // Limpiar vista previa JSON
+                    } finally {
+                        // Limpiar el valor del input file para permitir cargar el mismo archivo de nuevo
+                         e.target.value = null;
                     }
-                } catch (err) {
-                    console.error("Error al parsear JSON:", err);
-                    showStatus(els.importStatus, `Error: El archivo no es un JSON válido. (${err.message})`, true);
-                    masterPadList = []; // Resetea en caso de error
-                    updateDashboardStats();
-                }
-            };
+                };
+                reader.onerror = (error) => {
+                    console.error("Error al leer el archivo:", error);
+                    showStatus(els.importStatus, "Error: No se pudo leer el archivo.", true);
+                     if (els.fileName) els.fileName.textContent = file.name + " (Error lectura)";
+                     e.target.value = null; // Limpiar input
+                };
+                reader.readAsText(file, 'UTF-8'); // Especificar UTF-8
+            });
+        } else { console.warn("Elemento fileImport no encontrado"); }
 
-            reader.onerror = () => {
-                console.error("Error al leer el archivo:", reader.error);
-                showStatus(els.importStatus, "Error: No se pudo leer el archivo.", true);
-            };
-
-            reader.readAsText(file);
-        });
 
         // Búsqueda de pastilla
         const performSearch = () => {
-            const query = els.searchRef.value.trim().toLowerCase();
-            if (query.length < 2) {
-                els.searchResults.innerHTML = '<div class="search-feedback error">Escribe al menos 2 caracteres.</div>';
-                return;
-            }
-            if (masterPadList.length === 0) {
-                 els.searchResults.innerHTML = '<div class="search-feedback error">Carga un archivo data.json primero.</div>';
-                return;
-            }
+             if (!els.searchRef || !els.searchResults) return;
+             const query = els.searchRef.value.trim().toLowerCase();
 
-            const results = [];
-            masterPadList.forEach((pad, index) => {
-                const foundRef = pad.ref.find(r => r.toLowerCase().includes(query));
-                if (foundRef) {
-                    results.push({ pad, index, foundRef });
+             if (query.length < 2) {
+                 // Clear results if query is too short or empty
+                 els.searchResults.innerHTML = '<div class="search-feedback error">Escribe al menos 2 caracteres.</div>';
+                 return;
+             }
+             if (!Array.isArray(masterPadList) || masterPadList.length === 0) {
+                 els.searchResults.innerHTML = '<div class="search-feedback error">Carga o inicializa datos primero.</div>';
+                 return;
+             }
+
+             const results = masterPadList.reduce((acc, pad, index) => {
+                 const refs = (Array.isArray(pad?.ref) ? pad.ref : []).filter(r => typeof r === 'string');
+                 const foundRef = refs.find(r => r.toLowerCase().includes(query));
+
+                 if (foundRef) {
+                      // Usar Set para evitar duplicados si la misma pastilla coincide múltiples veces
+                      acc.add({ pad, index, foundRef: foundRef });
+                 }
+                 return acc;
+             }, new Set()); // Usar Set para resultados únicos por índice
+
+              const uniqueResults = Array.from(results); // Convertir Set a Array
+
+             if (uniqueResults.length === 0) {
+                 els.searchResults.innerHTML = `<div class="search-feedback">No se encontró nada para "${query}".</div>`;
+             } else {
+                 els.searchResults.innerHTML = uniqueResults.map(r => `
+                     <div class="search-result-item">
+                         <div>
+                             <span class="search-result-ref">${r.foundRef}</span>
+                             <span class="search-result-apps">(${(Array.isArray(r.pad?.aplicaciones) ? r.pad.aplicaciones.length : 0)} apps)</span>
+                         </div>
+                         <button type="button" class="btn btn-secondary edit-btn" data-index="${r.index}">Cargar</button>
+                     </div>
+                 `).join('');
+             }
+        };
+        if(els.searchBtn) els.searchBtn.addEventListener('click', performSearch);
+        if(els.searchRef) {
+            els.searchRef.addEventListener('keypress', (e) => { if (e.key === 'Enter') { e.preventDefault(); performSearch(); } });
+            els.searchRef.addEventListener('input', performSearch); // Buscar mientras se escribe
+        }
+        else { console.warn("Elementos searchBtn o searchRef no encontrados"); }
+
+
+        // Clic en "Cargar" de resultados
+        if(els.searchResults) {
+            els.searchResults.addEventListener('click', (e) => {
+                const targetButton = e.target.closest('.edit-btn');
+                if (targetButton) {
+                    const indexStr = targetButton.dataset.index;
+                    if (indexStr) {
+                         const index = parseInt(indexStr, 10);
+                         if (!isNaN(index) && index >= 0 && Array.isArray(masterPadList) && index < masterPadList.length) {
+                             const padData = masterPadList[index];
+                             if (padData) {
+                                 loadPadDataIntoForms(padData, index);
+                                 // Opcional: limpiar búsqueda después de cargar
+                                 // if (els.searchRef) els.searchRef.value = '';
+                                 // if (els.searchResults) els.searchResults.innerHTML = '';
+                             } else { console.warn("PadData no encontrado en índice:", index); }
+                         } else { console.warn("Índice inválido o fuera de rango:", indexStr); }
+                    } else { console.warn("Botón Cargar no tiene data-index."); }
                 }
             });
-
-            if (results.length === 0) {
-                els.searchResults.innerHTML = `<div class="search-feedback">No se encontró nada para "${query}".</div>`;
-            } else {
-                els.searchResults.innerHTML = results.map(r => `
-                    <div class="search-result-item">
-                        <div>
-                            <span class="search-result-ref">${r.foundRef}</span>
-                            <span class="search-result-apps">(${r.pad.aplicaciones?.length || 0} apps)</span>
-                        </div>
-                        <button class="btn btn-secondary edit-btn" data-index="${r.index}">Cargar</button>
-                    </div>
-                `).join('');
-            }
-        };
-        els.searchBtn?.addEventListener('click', performSearch);
-        els.searchRef?.addEventListener('keypress', (e) => { if (e.key === 'Enter') { e.preventDefault(); performSearch(); } });
-
-        // Clic en el botón "Cargar" de los resultados de búsqueda
-        els.searchResults?.addEventListener('click', (e) => {
-            if (e.target.classList.contains('edit-btn')) {
-                const index = parseInt(e.target.dataset.index, 10);
-                const padData = masterPadList[index];
-                if (padData) {
-                    loadPadDataIntoForms(padData, index);
-                }
-            }
-        });
+        } else { console.warn("Elemento searchResults no encontrado"); }
 
         // Limpiar formulario y búsqueda
-        els.clearSearchBtn?.addEventListener('click', resetFormsAndMode);
+        if(els.clearSearchBtn) els.clearSearchBtn.addEventListener('click', resetFormsAndMode);
+        else { console.warn("Elemento clearSearchBtn no encontrado"); }
 
-        // Añadir o actualizar una aplicación
-        els.appForm?.addEventListener('submit', (e) => {
-            e.preventDefault();
-            const app = {
-                marca: els.appMarca.value.trim(),
-                serie: els.appSerie.value.trim(),
-                litros: els.appLitros.value.trim(),
-                anio: els.appAnio.value.trim(),
-                espec: els.appEspec.value.trim(),
-            };
 
-            if (!app.marca || !app.serie) {
-                alert("Marca y Serie son obligatorios para la aplicación.");
-                return;
-            }
-
-            if (editingAppIndex > -1) {
-                // Actualizando
-                currentApps[editingAppIndex] = app;
-            } else {
-                // Añadiendo nueva
-                currentApps.push(app);
-            }
-            
-            renderCurrentApps();
-            resetAppForm();
-        });
-
-        // Cancelar edición de app
-        els.cancelEditAppBtn?.addEventListener('click', resetAppForm);
-
-        // Clic en botones "editar" o "eliminar" de la lista de apps
-        els.currentAppsList?.addEventListener('click', (e) => {
-            const button = e.target.closest('.app-action-btn');
-            if (!button) return;
-
-            const index = parseInt(button.dataset.index, 10);
-            
-            if (button.classList.contains('edit-app-btn')) {
-                loadAppDataIntoForm(index);
-            }
-            
-            if (button.classList.contains('remove-app-btn')) {
-                if (confirm(`¿Seguro que quieres eliminar la aplicación "${currentApps[index].marca} ${currentApps[index].serie}"?`)) {
-                    currentApps.splice(index, 1);
-                    renderCurrentApps();
-                    resetAppForm(); // Resetea por si estaba siendo editada
+        // Formulario de App (Submit)
+        if (els.appForm) {
+            els.appForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                if (!els.appMarca || !els.appSerie) {
+                     alert("Error interno: Faltan campos de Marca/Serie.");
+                     return;
                 }
-            }
-        });
 
-        // Guardar (o Actualizar) la pastilla principal
-        els.savePadBtn?.addEventListener('click', () => {
-            const refs = els.padRef.value.split(',').map(s => s.trim()).filter(Boolean);
-            if (refs.length === 0) {
-                alert("La Referencia es obligatoria.");
-                els.padRef.focus();
-                return;
-            }
+                const app = {
+                    marca: els.appMarca.value.trim(),
+                    serie: els.appSerie.value.trim(),
+                    litros: els.appLitros?.value.trim() || '',
+                    anio: els.appAnio?.value.trim() || '',
+                    espec: els.appEspec?.value.trim() || '',
+                };
 
-            const newPad = {
-                ref: refs,
-                oem: els.padOem.value.split(',').map(s => s.trim()).filter(Boolean),
-                fmsi: els.padFmsi.value.split(',').map(s => s.trim()).filter(Boolean),
-                posicion: els.padPosicion.value,
-                medidas: els.padMedidas.value.trim(),
-                img: els.padImagenes.value.split(',').map(s => s.trim()).filter(Boolean),
-                aplicaciones: currentApps, // Usa la lista de apps ya gestionada
-            };
+                if (!app.marca || !app.serie) {
+                    alert("Marca y Serie son obligatorios para la aplicación.");
+                    return;
+                }
 
-            let message = "";
-            if (editIndex > -1) {
-                // Actualizando
-                masterPadList[editIndex] = newPad;
-                message = `¡Pastilla "${newPad.ref[0]}" actualizada!`;
-            } else {
-                // Guardando nueva
-                masterPadList.push(newPad);
-                message = `¡Pastilla "${newPad.ref[0]}" guardada!`;
-            }
-            
-            updateDashboardStats();
-            resetFormsAndMode();
-            setActiveSection('dashboard'); // Vuelve al dashboard
-            // Muestra el status en el dashboard, no en la página de edición que ya se cerró
-            showStatus(els.importStatus, message, false); 
-        });
+                if (!Array.isArray(currentApps)) currentApps = [];
 
-        // Generar y descargar JSON
-        els.generateDownloadBtn?.addEventListener('click', () => {
-            if (masterPadList.length === 0) {
-                showStatus(els.downloadStatus, "No hay datos para generar.", true);
-                return;
-            }
-            
-            try {
-                const jsonString = generateJsonString();
-                els.jsonOutput.value = jsonString; // Muestra en el textarea
-                
-                const blob = new Blob([jsonString], { type: 'application/json' });
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = 'data.json';
-                document.body.appendChild(a);
-                a.click();
-                document.body.removeChild(a);
-                URL.revokeObjectURL(url);
-                
-                showStatus(els.downloadStatus, `data.json (${masterPadList.length} pastillas) generado.`, false);
-                
-            } catch (err) {
-                 showStatus(els.downloadStatus, `Error al generar JSON: ${err.message}`, true);
-            }
-        });
+                if (editingAppIndex > -1 && editingAppIndex < currentApps.length) {
+                    currentApps[editingAppIndex] = app;
+                } else {
+                    currentApps.push(app);
+                }
+
+                renderCurrentApps();
+                resetAppForm();
+                // Opcional: Mover el foco de nuevo al campo Marca para añadir otra rápidamente
+                // if(els.appMarca) els.appMarca.focus();
+            });
+        } else { console.warn("Elemento appForm no encontrado"); }
+
+        // Botón Cancelar Edición App
+        if(els.cancelEditAppBtn) els.cancelEditAppBtn.addEventListener('click', resetAppForm);
+        else { console.warn("Elemento cancelEditAppBtn no encontrado"); }
+
+
+        // Clics en lista de Apps (Editar/Eliminar)
+        if (els.currentAppsList) {
+            els.currentAppsList.addEventListener('click', (e) => {
+                const button = e.target.closest('.app-action-btn');
+                if (!button) return;
+
+                const indexStr = button.dataset.index;
+                if (!indexStr) { console.warn("Botón de acción de app sin data-index"); return; }
+                const index = parseInt(indexStr, 10);
+
+                if (isNaN(index) || !Array.isArray(currentApps) || index < 0 || index >= currentApps.length) {
+                     console.warn("Índice inválido o fuera de rango para acción de app:", indexStr);
+                     return;
+                }
+
+                if (button.classList.contains('edit-app-btn')) {
+                    loadAppDataIntoForm(index);
+                } else if (button.classList.contains('remove-app-btn')) {
+                    const appToRemove = currentApps[index];
+                    if (appToRemove && confirm(`¿Seguro que quieres eliminar la aplicación "${appToRemove.marca || ''} ${appToRemove.serie || ''}"?`)) {
+                        currentApps.splice(index, 1);
+                        renderCurrentApps();
+
+                        if (editingAppIndex === index) {
+                            resetAppForm();
+                        } else if (editingAppIndex > index) {
+                            editingAppIndex--;
+                            if (els.editingAppIndexInput) els.editingAppIndexInput.value = editingAppIndex;
+                        }
+                    }
+                }
+            });
+        } else { console.warn("Elemento currentAppsList no encontrado"); }
+
+        // Guardar Pastilla Principal
+        if (els.savePadBtn) {
+            els.savePadBtn.addEventListener('click', () => {
+                 if (!els.padRef || !els.padOem || !els.padFmsi || !els.padPosicion || !els.padMedidas || !els.padImagenes) {
+                     alert("Error: Faltan elementos del formulario principal.");
+                     return;
+                 }
+
+                const refsValue = els.padRef.value || '';
+                const refs = refsValue.split(',').map(s => s.trim()).filter(Boolean);
+
+                if (refs.length === 0) {
+                    alert("La Referencia es obligatoria.");
+                    if(els.padRef.focus) els.padRef.focus();
+                    return;
+                }
+
+                const newPad = {
+                    ref: refs,
+                    oem: (els.padOem.value || '').split(',').map(s => s.trim()).filter(Boolean),
+                    fmsi: (els.padFmsi.value || '').split(',').map(s => s.trim()).filter(Boolean),
+                    posicion: els.padPosicion.value || 'Delantera',
+                    medidas: (els.padMedidas.value || '').trim(),
+                    img: (els.padImagenes.value || '').split(',').map(s => s.trim()).filter(Boolean),
+                    aplicaciones: Array.isArray(currentApps) ? currentApps : [],
+                };
+
+                let message = "";
+                if (!Array.isArray(masterPadList)) masterPadList = [];
+
+                if (editIndex > -1 && editIndex < masterPadList.length) {
+                    masterPadList[editIndex] = newPad;
+                    message = `¡Pastilla "${newPad.ref[0]}" actualizada!`;
+                } else {
+                    masterPadList.push(newPad);
+                    message = `¡Pastilla "${newPad.ref[0]}" guardada!`;
+                    // No necesitas actualizar editIndex aquí, se resetea en resetFormsAndMode
+                }
+
+                updateDashboardStats();
+                resetFormsAndMode(); // Resetea todo, incluido editIndex
+                setActiveSection('dashboard');
+                showStatus(els.importStatus, message, false); // Status en dashboard
+            });
+        } else { console.warn("Elemento savePadBtn no encontrado"); }
+
+        // Generar y Descargar JSON
+        if (els.generateDownloadBtn) {
+            els.generateDownloadBtn.addEventListener('click', () => {
+                const jsonString = generateJsonString(); // Obtiene string compacto
+                // Mostrar JSON formateado en el textarea INCLUSO si está vacío ('[]')
+                displayFormattedJson(jsonString);
+
+                if (jsonString === '[]') {
+                    showStatus(els.downloadStatus, "No hay datos cargados para generar.", true);
+                    return; // No intentar descargar un array vacío
+                }
+
+                try {
+                    const blob = new Blob([jsonString], { type: 'application/json;charset=utf-8' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.style.display = 'none';
+                    a.href = url;
+                    a.download = 'data.json';
+                    document.body.appendChild(a);
+                    a.click();
+                    window.URL.revokeObjectURL(url);
+                    document.body.removeChild(a);
+
+                    showStatus(els.downloadStatus, `data.json (${masterPadList.length} pastillas) generado y descargado.`, false);
+                } catch (err) {
+                    console.error("Error al crear/descargar Blob:", err);
+                    showStatus(els.downloadStatus, `Error al descargar: ${err.message}`, true);
+                }
+            });
+        } else { console.warn("Elemento generateDownloadBtn no encontrado"); }
+
 
         // Copiar JSON
-        els.copyJsonBtn?.addEventListener('click', () => {
-            if (els.jsonOutput.value.length === 0) {
-                showStatus(els.copyStatus, "No hay JSON para copiar.", true);
-                return;
-            }
-            navigator.clipboard.writeText(els.jsonOutput.value)
-                .then(() => {
-                    showStatus(els.copyStatus, "¡JSON copiado al portapapeles!", false);
-                })
-                .catch(err => {
-                    showStatus(els.copyStatus, `Error al copiar: ${err.message}`, true);
-                });
-        });
+        if (els.copyJsonBtn && els.jsonOutput) { // Asegurarse que ambos existen
+            els.copyJsonBtn.addEventListener('click', () => {
+                const jsonToCopy = els.jsonOutput.value; // Copia lo que está en el textarea
+                 if (!jsonToCopy || jsonToCopy.length === 0 || jsonToCopy === '[]') {
+                    showStatus(els.copyStatus, "No hay JSON generado en la vista previa para copiar.", true);
+                    return;
+                }
 
-        // Limpiar sesión
-        els.clearAllBtn?.addEventListener('click', () => {
-            if (confirm("¿Estás SEGURO de que quieres borrar todos los datos cargados en esta sesión? Esta acción no se puede deshacer.")) {
-                masterPadList = [];
-                totalAppsInList = 0;
-                resetFormsAndMode();
-                updateDashboardStats();
-                els.jsonOutput.value = '';
-                els.fileName.textContent = 'Ningún archivo.';
-                showStatus(els.importStatus, "Sesión limpiada. Carga un nuevo archivo.", false);
-                setActiveSection('dashboard');
-            }
-        });
-        
-        // =============================================
-        //  ¡ARREGLO #1: ANIMACIÓN MODO OSCURO!
-        // =============================================
-        els.darkBtn?.addEventListener('click', (e) => {
-            createRippleEffect(e);
-            const isDark = document.body.classList.toggle('lp-dark');
-            
-            if(els.darkBtn) {
-                els.darkBtn.setAttribute('aria-pressed', String(isDark));
-            }
+                navigator.clipboard.writeText(jsonToCopy)
+                    .then(() => {
+                        showStatus(els.copyStatus, "¡JSON (formateado) copiado!", false);
+                    })
+                    .catch(err => {
+                        console.error("Error al copiar al portapapeles:", err);
+                        showStatus(els.copyStatus, `Error al copiar: ${err.message}. Intenta manualmente.`, true);
+                        // Fallback opcional seleccionando el texto
+                        // els.jsonOutput.select();
+                        // els.jsonOutput.setSelectionRange(0, 99999); // Para móviles
+                    });
+            });
+        } else { console.warn("Elementos copyJsonBtn o jsonOutput no encontrados"); }
 
-            // ---- ¡ESTA ES LA FUNCIÓN DE ANIMACIÓN QUE FALTABA! ----
-            const iconAnimation = (icon, isShowing) => {
-                if (!icon) return; // Seguridad
-                icon.style.transition = 'opacity 0.3s ease-in-out, transform 0.3s ease-in-out';
-                icon.style.opacity = isShowing ? '1' : '0';
-                icon.style.transform = isShowing ? 'scale(1)' : 'scale(0.8)';
-            };
-            // ------------------------------------------
+        // Limpiar Sesión
+        if (els.clearAllBtn) {
+            els.clearAllBtn.addEventListener('click', () => {
+                if (confirm("¿Estás SEGURO de que quieres borrar todos los datos cargados en esta sesión? Esta acción NO se puede deshacer.")) {
+                    masterPadList = [];
+                    resetFormsAndMode();
+                    updateDashboardStats();
+                    if (els.jsonOutput) els.jsonOutput.value = '';
+                    if (els.fileName) els.fileName.textContent = 'Ningún archivo seleccionado.';
+                    if (els.fileImport) els.fileImport.value = '';
+                    showStatus(els.importStatus, "Sesión limpiada. Puedes cargar un nuevo archivo.", false);
+                    setActiveSection('dashboard');
+                }
+            });
+        } else { console.warn("Elemento clearAllBtn no encontrado"); }
 
-            iconAnimation(els.sunIcon, !isDark);
-            iconAnimation(els.moonIcon, isDark);
-            
-            try { 
-                localStorage.setItem('darkModeAdminPref', isDark ? '1' : '0'); 
-            } 
-            catch (storageError) { 
-                console.warn("No se pudo guardar pref modo oscuro", storageError); 
-            }
-        });
+        // Botón Modo Oscuro
+        if (els.darkBtn) {
+            els.darkBtn.addEventListener('click', (e) => {
+                createRippleEffect(e);
+                const isDark = document.body.classList.toggle('lp-dark');
+                els.darkBtn?.setAttribute('aria-pressed', String(isDark));
 
-        console.log("Event listeners added successfully."); 
+                const iconAnimation = (icon, isShowing) => {
+                    if (!icon) return;
+                    icon.style.transition = 'opacity 0.3s ease-in-out, transform 0.3s ease-in-out';
+                    icon.style.opacity = isShowing ? '1' : '0';
+                    icon.style.transform = isShowing ? 'scale(1)' : 'scale(0.8)';
+                };
+
+                iconAnimation(els.sunIcon, !isDark);
+                iconAnimation(els.moonIcon, isDark);
+
+                try {
+                    localStorage.setItem('darkModeAdminPref', isDark ? '1' : '0');
+                } catch (storageError) {
+                    console.warn("No se pudo guardar preferencia de modo oscuro:", storageError);
+                }
+            });
+        } else { console.warn("Elemento darkBtn no encontrado"); }
+
+        console.log("Todos los event listeners configurados correctamente.");
+
+    // El catch para la configuración de listeners
     } catch (error) {
-         console.error("Error adding event listeners:", error); 
-         alert("Error crítico al inicializar acciones. Revisa consola (F12).");
-         return; 
+        console.error("Error crítico añadiendo event listeners:", error);
+        alert("Error crítico al inicializar la página. Revisa la consola (F12).");
     }
-    
+
     // ----- APLICAR PREFERENCIA DARK MODE AL CARGAR -----
     try {
         const savedPref = localStorage.getItem('darkModeAdminPref');
-        const prefersDarkScheme = window.matchMedia("(prefers-color-scheme: dark)").matches;
+        const prefersDarkScheme = window.matchMedia?.("(prefers-color-scheme: dark)").matches ?? false;
         let startDark = (savedPref === '1') || (savedPref === null && prefersDarkScheme);
 
-        // Asegúrate de que los iconos correctos se muestren al cargar
+        // Aplicar clase antes de animar iconos
         if (startDark) {
-            document.body.classList.add('lp-dark');
-            if(els.darkBtn) els.darkBtn.setAttribute('aria-pressed', 'true');
-            if(els.sunIcon) {
-                els.sunIcon.style.opacity = '0';
-                els.sunIcon.style.transform = 'scale(0.8)';
-            }
-            if(els.moonIcon) {
-                els.moonIcon.style.opacity = '1';
-                els.moonIcon.style.transform = 'scale(1)';
-            }
+             document.body.classList.add('lp-dark');
         } else {
-            document.body.classList.remove('lp-dark');
-             if(els.darkBtn) els.darkBtn.setAttribute('aria-pressed', 'false');
-            if(els.sunIcon) {
-                els.sunIcon.style.opacity = '1';
-                els.sunIcon.style.transform = 'scale(1)';
-            }
-            if(els.moonIcon) {
-                els.moonIcon.style.opacity = '0';
-                els.moonIcon.style.transform = 'scale(0.8)';
-            }
+             document.body.classList.remove('lp-dark');
         }
-    } catch (storageError) { 
-        console.warn("No se pudo leer pref modo oscuro", storageError);
+        if(els.darkBtn) els.darkBtn.setAttribute('aria-pressed', String(startDark));
+
+        // Animación inicial sin transición
+        const initialIconAnimation = (icon, isShowing) => {
+             if (!icon) return;
+             icon.style.transition = 'none'; // Sin animación inicial
+             icon.style.opacity = isShowing ? '1' : '0';
+             icon.style.transform = isShowing ? 'scale(1)' : 'scale(0.8)';
+             // Forzar reflow puede no ser necesario si se aplica antes de que el navegador pinte
+             // requestAnimationFrame(() => { icon.style.transition = ''; }); // Restaurar transición
+        };
+
+        initialIconAnimation(els.sunIcon, !startDark);
+        initialIconAnimation(els.moonIcon, startDark);
+        // Restaurar transiciones después de un pequeño delay o en el siguiente frame
+        requestAnimationFrame(() => {
+             if (els.sunIcon) els.sunIcon.style.transition = '';
+             if (els.moonIcon) els.moonIcon.style.transition = '';
+        });
+
+
+    } catch (storageError) {
+        console.warn("No se pudo leer/aplicar preferencia de modo oscuro:", storageError);
     }
 
-    // Inicializar UI
+    // ----- INICIALIZAR UI -----
     try {
-        setActiveSection('dashboard');
-        updateDashboardStats();
+        setActiveSection('dashboard'); // Establece la sección inicial
+        updateDashboardStats();      // Calcula estadísticas iniciales (serán 0)
         console.log("Admin panel UI initialized successfully.");
     } catch (error) {
         console.error("Error al inicializar UI:", error);
+        alert("Error al inicializar la interfaz. Revisa la consola.");
     }
 
 }); // Fin de DOMContentLoaded
