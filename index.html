@@ -10,6 +10,8 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Outlined" rel="stylesheet">
 
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
     <link rel="stylesheet" href="admin-styles.css">
 </head>
 <body>
@@ -18,7 +20,7 @@
         <aside class="sidebar">
             <div class="sidebar-header">
                 <span class="material-icons-outlined logo-icon">speed</span>
-                <span class="logo-text">Brake X Admin 1.1 </span>
+                <span class="logo-text">Brake X Admin</span>
             </div>
             <nav class="nav-menu">
                 <a href="#" class="nav-item active" data-section="dashboard">
@@ -65,10 +67,10 @@
                         </div>
                     </div>
                     <div class="card">
-                        <h2 class="card-title">Cargar `data.json` Existente</h2>
-                        <p class="card-description">Carga tu archivo <strong>data.json</strong> actual para empezar a añadir o modificar datos.</p>
+                        <h2 class="card-title">Cargar `data.json` o `.xlsx`</h2>
+                        <p class="card-description">Carga tu archivo <strong>data.json</strong> o <strong>JSON.xlsx</strong> para empezar a añadir o modificar datos.</p>
                         <div class="file-upload-wrapper">
-                            <input type="file" id="file-import" accept=".json" class="file-input">
+                            <input type="file" id="file-import" accept=".json, .xlsx, .xls" class="file-input">
                             <label for="file-import" class="btn btn-secondary file-btn">
                                 <span class="material-icons-outlined">upload_file</span> Seleccionar archivo...
                             </label>
@@ -111,7 +113,7 @@
                              <div class="form-group"> <label for="app-marca" class="input-label">Marca</label> <input type="text" id="app-marca" class="text-input" required> </div>
                              <div class="form-group"> <label for="app-serie" class="input-label">Serie / Modelo</label> <input type="text" id="app-serie" class="text-input" required> </div>
                              <div class="form-group"> <label for="app-litros" class="input-label">Litros / Motor</label> <input type="text" id="app-litros" class="text-input"> </div>
-                             <div class="form-group"> <label for="app-anio" class="input-label">Año(s)</label> <input type="text" id="app-anio" class="text-input" placeholder="Ej: 2018-2022 o 2020"> </div>
+                             <div class="form-group"> <label for="app-anio" class="input-label">Año(s)</label> <input type="text" id="app-anio" class="text-input" placeholder="Ej: 85-95 o 99"> </div>
                              <div class="form-group span-2"> <label for="app-especificacion" class="input-label">Especificación (Opcional)</label> <input type="text" id="app-especificacion" class="text-input" placeholder="Ej: 4WD, Sedan, etc."> </div>
                              <div class="form-group span-2 button-group">
                                  <button id="add-update-app-btn" type="submit" class="btn btn-tertiary"> <span class="material-icons-outlined">add_circle</span> <span id="add-app-button-text">Añadir App</span> </button>
@@ -129,9 +131,12 @@
 
                 <div id="export-data" class="content-section">
                      <div class="card">
-                        <h2 class="card-title">Generar y Descargar `data.json`</h2>
-                        <p class="card-description">Descarga el archivo <strong>data.json</strong> con todos los cambios (ordenado por referencia).</p>
-                        <button id="generate-download-btn" class="btn btn-primary" type="button"> <span class="material-icons-outlined">file_download</span> Descargar JSON </button>
+                        <h2 class="card-title">Generar y Descargar Archivos</h2>
+                        <p class="card-description">Descarga el archivo <strong>data.json</strong> (compacto, 1 línea por objeto) o un archivo <strong>data.xlsx</strong> (formato de una fila por aplicación).</p>
+                        <div class="button-group">
+                            <button id="generate-download-btn" class="btn btn-primary" type="button"> <span class="material-icons-outlined">file_download</span> Descargar JSON </button>
+                            <button id="export-excel-btn" class="btn btn-tertiary" type="button"> <span class="material-icons-outlined">grid_on</span> Exportar a Excel </button>
+                        </div>
                         <span id="download-status" class="status-message"></span>
                     </div>
                     <div class="card">
@@ -170,6 +175,7 @@
             </div>
         </div>
     </div>
+
     <script src="admin-script.js"></script>
 </body>
 </html>
