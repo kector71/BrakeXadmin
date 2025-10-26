@@ -560,6 +560,57 @@ body.lp-dark .btn-danger:hover { box-shadow: var(--elevation-2); }
     align-self: flex-end; /* Alinear a la derecha */
 }
 
+/* ================== MODAL DE CONFIRMACIÓN ================== */
+.modal-overlay {
+    position: fixed;
+    inset: 0;
+    background-color: rgba(0, 0, 0, 0.6);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10000;
+    padding: 1rem;
+    opacity: 0;
+    transition: opacity 0.2s ease-in-out;
+    pointer-events: none;
+}
+.modal-overlay.visible {
+    opacity: 1;
+    pointer-events: auto;
+}
+.modal-card {
+    width: 100%;
+    max-width: 450px;
+    margin: 0; /* Anular margen de .card */
+    transform: scale(0.95);
+    transition: transform 0.2s ease-in-out;
+    box-shadow: var(--elevation-4); /* Sombra más fuerte para modal */
+}
+.modal-overlay.visible .modal-card {
+    transform: scale(1);
+}
+.modal-card .card-title {
+    margin: -1.5rem -1.5rem 1rem -1.5rem; /* Ajustar a padding de card */
+    padding: 1rem 1.5rem;
+    font-size: 1.2rem;
+}
+.modal-card .card-description {
+    font-size: 1rem;
+    margin-bottom: 1.5rem;
+    color: var(--text-color);
+    opacity: 0.9;
+}
+.modal-buttons {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.75rem;
+}
+/* Asegurar que el modal use los colores del tema oscuro */
+body.lp-dark .modal-card {
+     background-color: var(--material-surface-light); /* Ya usa --material-surface-light */
+     border-color: var(--material-surface-border);
+}
+
 
 /* ==================== RESPONSIVE ==================== */
 @media (max-width: 992px) {
@@ -591,11 +642,12 @@ body.lp-dark .btn-danger:hover { box-shadow: var(--elevation-2); }
     body.lp-dark .nav-item.active .material-icons-outlined { color: var(--primary-color); }
 
     .content-wrapper { padding: 1rem; } 
-    .card { padding: 1.5rem; }
+    .card { padding: 1.5rem; border-radius: var(--border-radius-card); } /* Asegurar borde en móvil */
     .card-title {
         font-size: 1rem;
         margin: -1.5rem -1.5rem 1rem -1.5rem;
         padding: 1rem 1.5rem;
+        border-radius: var(--border-radius-card) var(--border-radius-card) 0 0;
     }
     .form-grid { grid-template-columns: 1fr; } 
     .form-group.span-2 { grid-column: span 1; }
@@ -636,4 +688,15 @@ body.lp-dark .btn-danger:hover { box-shadow: var(--elevation-2); }
     #edit-pad .app-list li { padding: 5px 8px; margin-bottom: 5px; }
     #edit-pad .app-list li .app-info { margin-right: 8px; }
     #edit-pad .card > .btn-cta { margin-top: 12px; padding: 8px 16px; font-size: 14px; }
+    
+    /* Modal responsive */
+    .modal-card .card-title {
+         margin: -1rem -1rem 1rem -1rem;
+         padding: 1rem;
+         font-size: 1.1rem;
+    }
+    .modal-card .card-description {
+         font-size: 0.9rem;
+         margin-bottom: 1rem;
+    }
 }

@@ -57,18 +57,85 @@ document.addEventListener('DOMContentLoaded', () => {
             darkBtn: document.getElementById('darkBtn'),
             sunIcon: document.querySelector('.lp-icon-sun'),
             moonIcon: document.querySelector('.lp-icon-moon'),
+            
+            // --- NUEVOS ELEMENTOS ---
+            savePadStatus: document.getElementById('save-pad-status'), // Para errores de form
+            confirmModalOverlay: document.getElementById('confirm-modal-overlay'),
+            confirmModalContent: document.getElementById('confirm-modal-content'),
+            confirmModalTitle: document.getElementById('confirm-modal-title'),
+            confirmModalMessage: document.getElementById('confirm-modal-message'),
+            confirmModalBtnYes: document.getElementById('confirm-modal-btn-yes'),
+            confirmModalBtnNo: document.getElementById('confirm-modal-btn-no'),
         };
-        if (!els.pageTitle || !els.navItems || !els.contentSections || !els.padRef) {
+        
+        if (!els.pageTitle || !els.navItems || !els.contentSections || !els.padRef || !els.confirmModalOverlay) {
              throw new Error("Elementos esenciales del layout o formulario no encontrados.");
         }
         console.log("DOM elements obtained successfully.");
     } catch (error) {
         console.error("Error obtaining DOM elements:", error);
-        alert("Error crítico: No se encontraron elementos HTML necesarios. Revisa IDs y la consola (F12).");
+        // Quitar el alert de aquí también
+        // alert("Error crítico: No se encontraron elementos HTML necesarios. Revisa IDs y la consola (F12).");
+        console.error("Error crítico: No se encontraron elementos HTML necesarios. Revisa IDs.");
         return;
     }
 
     // ----- FUNCIONES -----
+
+    // --- NUEVA FUNCIÓN: CONFIRMACIÓN PERSONALIZADA ---
+    let confirmResolve = null; // Variable global para guardar la función resolve de la promesa
+
+    /**
+     * Muestra un modal de confirmación personalizado.
+     * @param {string} message - El mensaje a mostrar.
+     * @param {string} [title="Confirmar Acción"] - El título del modal.
+     * @param {string} [confirmText="Confirmar"] - Texto del botón de confirmación.
+     * @param {string} [confirmClass="btn-danger"] - Clase CSS para el botón de confirmación (ej: 'btn-danger', 'btn-primary').
+     * @returns {Promise<boolean>} - Resuelve a 'true' si se confirma, 'false' si se cancela.
+     */
+    const showCustomConfirm = (message, title = "Confirmar Acción", confirmText = "Confirmar", confirmClass = "btn-danger") => {
+        if (!els.confirmModalOverlay || !els.confirmModalTitle || !els.confirmModalMessage || !els.confirmModalBtnYes) {
+            console.error("Faltan elementos del modal de confirmación.");
+            return Promise.resolve(false); // Falla seguro
+        }
+
+        els.confirmModalTitle.textContent = title;
+        els.confirmModalMessage.textContent = message;
+        els.confirmModalBtnYes.textContent = confirmText;
+
+        // Resetear clases del botón y aplicar la nueva
+        els.confirmModalBtnYes.className = 'btn'; // Resetea a la clase base
+        els.confirmModalBtnYes.classList.add(confirmClass); // Añade la clase de color
+        
+        els.confirmModalOverlay.style.display = 'flex';
+        // Usar un pequeño timeout para permitir que el 'display: flex' se aplique antes de la transición de opacidad
+        setTimeout(() => els.confirmModalOverlay.classList.add('visible'), 10); 
+
+        return new Promise((resolve) => {
+            confirmResolve = resolve; // Almacenar la función resolve para usarla después
+        });
+    };
+
+    /**
+     * Oculta el modal de confirmación y resuelve la promesa pendiente.
+     * @param {boolean} result - El resultado de la confirmación (true/false).
+     */
+    const hideCustomConfirm = (result) => {
+        if (!els.confirmModalOverlay) return;
+        
+        els.confirmModalOverlay.classList.remove('visible');
+        
+        // Esperar que termine la transición CSS (200ms) antes de ocultar con display:none
+        setTimeout(() => {
+             els.confirmModalOverlay.style.display = 'none';
+             if (confirmResolve) {
+                confirmResolve(result); // Resuelve la promesa
+                confirmResolve = null; // Limpia la variable
+             }
+        }, 200); 
+    };
+    // --- FIN NUEVAS FUNCIONES ---
+
 
     const setActiveSection = (sectionId) => {
         if (!sectionId || typeof sectionId !== 'string') {
@@ -189,8 +256,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }, duration);
     };
 
-    // --- ¡CAMBIO AQUÍ! ---
-    // Genera JSON compacto PERO con un salto de línea entre objetos
     const generateJsonString = () => {
         if (!Array.isArray(masterPadList) || masterPadList.length === 0) return '[]';
         const sortedList = [...masterPadList];
@@ -202,17 +267,9 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         try {
-            // 1. Convertir a JSON compacto (una sola línea)
             const compactJson = JSON.stringify(sortedList);
-            
-            // 2. Reemplazar "},{
-            //    con "},
-            //    {"
-            // Esto crea el formato de un objeto por línea.
             const formattedJson = compactJson.replace(/},{/g, '},\n{');
-            
             return formattedJson;
-
         } catch (err) {
             console.error("Error stringifying data:", err);
             showStatus(els.downloadStatus, `Error interno al generar JSON: ${err.message}`, true);
@@ -220,17 +277,17 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
-    // Muestra JSON "bonito" (indentado) en el textarea
     const displayFormattedJson = (jsonString) => {
         if (!els.jsonOutput) return;
         try {
-            // Aunque el string de entrada pueda tener saltos de línea,
-            // lo parseamos y lo re-formateamos con indentación para la vista previa.
-            const parsedData = JSON.parse(jsonString);
+            // Re-compactar por si acaso antes de parsear
+            const reCompact = jsonString.replace(/},\n{/g, '},{');
+            const parsedData = JSON.parse(reCompact);
             els.jsonOutput.value = JSON.stringify(parsedData, null, 2);
         } catch (e) {
-            console.error("Error formatting JSON for display:", e);
-            els.jsonOutput.value = jsonString; // Muestra el original (con saltos de línea) si falla
+            console.error("Error formatting JSON for display:", e, jsonString);
+             // Si falla el parseo, solo muestra el texto tal cual
+             els.jsonOutput.value = jsonString;
         }
     };
 
@@ -345,6 +402,16 @@ document.addEventListener('DOMContentLoaded', () => {
     try {
         console.log("Adding event listeners...");
 
+        // --- AÑADIR LISTENERS PARA MODAL ---
+        els.confirmModalBtnYes?.addEventListener('click', () => hideCustomConfirm(true));
+        els.confirmModalBtnNo?.addEventListener('click', () => hideCustomConfirm(false));
+        els.confirmModalOverlay?.addEventListener('click', (e) => {
+            if (e.target === els.confirmModalOverlay) {
+                hideCustomConfirm(false); // Cierra si se hace clic en el fondo
+            }
+        });
+
+
         // Navegación
         els.navItems?.forEach(item => {
             item.addEventListener('click', (e) => {
@@ -369,7 +436,12 @@ document.addEventListener('DOMContentLoaded', () => {
                     try {
                         const result = event.target?.result;
                         if (typeof result !== 'string') throw new Error("Contenido no es texto.");
-                        const data = JSON.parse(result);
+                        let dataToParse = result;
+                        if (result.startsWith('[') && result.endsWith(']') && result.includes('},\n{')) {
+                             console.log("Detectado formato una-línea-por-objeto, re-compactando...");
+                             dataToParse = result.replace(/},\n{/g, '},{');
+                        }
+                        const data = JSON.parse(dataToParse);
                         if (!Array.isArray(data)) throw new Error("JSON no es array.");
                         masterPadList = data;
                         updateDashboardStats();
@@ -480,12 +552,13 @@ document.addEventListener('DOMContentLoaded', () => {
                     marca: els.appMarca.value.trim(),
                     serie: els.appSerie.value.trim(),
                     litros: els.appLitros?.value.trim() || '',
-                    año: els.appAnio?.value.trim() || '', // Guardar 'año' (con tilde)
-                    especificacion: els.appEspec?.value.trim() || '', // Guardar 'especificacion'
+                    año: els.appAnio?.value.trim() || '',
+                    especificacion: els.appEspec?.value.trim() || '',
                 };
 
                 if (!app.marca || !app.serie) {
-                    alert("Marca y Serie son obligatorios.");
+                    // --- ¡CAMBIO! Reemplazar alert() ---
+                    showStatus(els.savePadStatus, "Marca y Serie son obligatorios para la aplicación.", true);
                     if(!app.marca) els.appMarca?.focus(); else els.appSerie?.focus();
                     return;
                 }
@@ -506,8 +579,9 @@ document.addEventListener('DOMContentLoaded', () => {
         else { console.warn("Elemento cancelEditAppBtn no encontrado"); }
 
         // Clics Lista Apps
+        // --- ¡CAMBIO! Añadir 'async' y 'await' ---
         if (els.currentAppsList) {
-            els.currentAppsList.addEventListener('click', (e) => {
+            els.currentAppsList.addEventListener('click', async (e) => {
                 const button = e.target.closest('.app-action-btn');
                 if (!button) return;
                 const indexStr = button.dataset.index;
@@ -519,7 +593,12 @@ document.addEventListener('DOMContentLoaded', () => {
                     loadAppDataIntoForm(index);
                 } else if (button.classList.contains('remove-app-btn')) {
                     const appToRemove = currentApps[index];
-                    if (appToRemove && confirm(`¿Eliminar "${appToRemove.marca || ''} ${appToRemove.serie || ''}"?`)) {
+                    
+                    // --- ¡CAMBIO! Reemplazar confirm() ---
+                    const message = `¿Seguro que quieres eliminar la aplicación "${appToRemove.marca || ''} ${appToRemove.serie || ''}"?`;
+                    const confirmed = await showCustomConfirm(message, "Eliminar Aplicación", "Eliminar", "btn-danger");
+                    
+                    if (appToRemove && confirmed) {
                         currentApps.splice(index, 1);
                         renderCurrentApps();
                         if (editingAppIndex === index) resetAppForm();
@@ -535,23 +614,30 @@ document.addEventListener('DOMContentLoaded', () => {
         // Guardar Pastilla
         if (els.savePadBtn) {
             els.savePadBtn.addEventListener('click', () => {
-                 if (!els.padRef) { alert("Error: Campo Ref no encontrado."); return; }
+                 if (!els.padRef) { 
+                    showStatus(els.savePadStatus, "Error: Campo Ref no encontrado.", true);
+                    return; 
+                 }
                 const refsValue = els.padRef.value || '';
                 const refsArray = refsValue.split(',').map(s => s.trim()).filter(Boolean);
 
                 if (refsArray.length === 0) {
-                    alert("La Referencia (ID) es obligatoria.");
+                    // --- ¡CAMBIO! Reemplazar alert() ---
+                    showStatus(els.savePadStatus, "La Referencia (ID) es obligatoria.", true);
                     if(els.padRef.focus) els.padRef.focus();
                     return;
                 }
+
+                // Limpiar el mensaje de error si todo está bien
+                showStatus(els.savePadStatus, "", false, 1); // Limpia rápido
 
                 const newPad = {
                     ref: refsArray,
                     oem: (els.padOem?.value || '').split(',').map(s => s.trim()).filter(Boolean),
                     fmsi: (els.padFmsi?.value || '').split(',').map(s => s.trim()).filter(Boolean),
-                    posición: els.padPosicion?.value || 'Delantera', // Guardar 'posición' (con tilde)
+                    posición: els.padPosicion?.value || 'Delantera',
                     medidas: (els.padMedidas?.value || '').trim(),
-                    imagenes: (els.padImagenes?.value || '').split(',').map(s => s.trim()).filter(Boolean), // Guardar 'imagenes' (plural)
+                    imagenes: (els.padImagenes?.value || '').split(',').map(s => s.trim()).filter(Boolean),
                     aplicaciones: Array.isArray(currentApps) ? currentApps : [],
                 };
 
@@ -569,15 +655,15 @@ document.addEventListener('DOMContentLoaded', () => {
                 updateDashboardStats();
                 resetFormsAndMode();
                 setActiveSection('dashboard');
-                showStatus(els.importStatus, message, false);
+                showStatus(els.importStatus, message, false); // Mostrar éxito en el dashboard
             });
         } else { console.warn("Elemento savePadBtn no encontrado"); }
 
         // Generar y Descargar JSON
         if (els.generateDownloadBtn) {
             els.generateDownloadBtn.addEventListener('click', () => {
-                const jsonString = generateJsonString(); // Compacto con saltos de línea
-                displayFormattedJson(jsonString); // Muestra formateado en textarea
+                const jsonString = generateJsonString();
+                displayFormattedJson(jsonString);
 
                 if (!Array.isArray(masterPadList) || masterPadList.length === 0) {
                     showStatus(els.downloadStatus, "No hay datos cargados para generar.", true);
@@ -605,7 +691,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // Copiar JSON
         if (els.copyJsonBtn && els.jsonOutput) {
             els.copyJsonBtn.addEventListener('click', () => {
-                const jsonToCopy = els.jsonOutput.value; // Copia el JSON "bonito" del textarea
+                const jsonToCopy = els.jsonOutput.value;
                  if (!jsonToCopy || jsonToCopy.length === 0 || jsonToCopy === '[]') {
                     showStatus(els.copyStatus, "No hay JSON en vista previa.", true);
                     return;
@@ -620,9 +706,14 @@ document.addEventListener('DOMContentLoaded', () => {
         } else { console.warn("Elementos copyJsonBtn o jsonOutput no encontrados"); }
 
         // Limpiar Sesión
+        // --- ¡CAMBIO! Añadir 'async' y 'await' ---
         if (els.clearAllBtn) {
-            els.clearAllBtn.addEventListener('click', () => {
-                if (confirm("¿Borrar datos de sesión? No afecta el archivo guardado.")) {
+            els.clearAllBtn.addEventListener('click', async () => {
+                // --- ¡CAMBIO! Reemplazar confirm() ---
+                const message = "¿Estás SEGURO de que quieres borrar todos los datos de esta sesión? Esta acción no se puede deshacer.";
+                const confirmed = await showCustomConfirm(message, "Limpiar Sesión", "Sí, Limpiar Todo", "btn-danger");
+                
+                if (confirmed) {
                     masterPadList = [];
                     resetFormsAndMode();
                     updateDashboardStats();
@@ -658,7 +749,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     } catch (error) {
         console.error("Error crítico añadiendo listeners:", error);
-        alert("Error crítico al inicializar. Revisa consola (F12).");
+        // alert("Error crítico al inicializar. Revisa consola (F12).");
     }
 
     // ----- APLICAR DARK MODE AL CARGAR -----
@@ -692,7 +783,7 @@ document.addEventListener('DOMContentLoaded', () => {
         console.log("Admin panel UI inicializado.");
     } catch (error) {
         console.error("Error al inicializar UI:", error);
-        alert("Error al inicializar interfaz.");
+        // alert("Error al inicializar interfaz.");
     }
 
 }); // Fin DOMContentLoaded

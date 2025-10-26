@@ -18,7 +18,7 @@
         <aside class="sidebar">
             <div class="sidebar-header">
                 <span class="material-icons-outlined logo-icon">speed</span>
-                <span class="logo-text">Brake X Admin 1.0</span>
+                <span class="logo-text">Brake X Admin</span>
             </div>
             <nav class="nav-menu">
                 <a href="#" class="nav-item active" data-section="dashboard">
@@ -84,7 +84,7 @@
                          <div class="form-group">
                              <label for="search-ref" class="input-label">Buscar por Referencia</label>
                              <div class="search-wrapper">
-                                 <input type="text" id="search-ref" class="text-input" placeholder="Ej: 7104">
+                                 <input type="text" id="search-ref" class="text-input" placeholder="Ej: 7104INC">
                                  <button id="search-btn" class="btn btn-secondary search-btn" type="button"> <span class="material-icons-outlined">search</span> </button>
                              </div>
                          </div>
@@ -93,7 +93,8 @@
                     </div>
                     <div class="card">
                         <h2 class="card-title" id="form-mode-title">Añadir Nueva Pastilla</h2>
-                        <form id="pad-form-main" class="form-grid" onsubmit="return false;"> <input type="hidden" id="edit-index" value="-1">
+                        <form id="pad-form-main" class="form-grid" onsubmit="return false;">
+                           <input type="hidden" id="edit-index" value="-1">
                             <div class="form-group span-2"> <label for="pad-ref" class="input-label">Referencias (separadas por coma)</label> <input type="text" id="pad-ref" class="text-input" required> </div>
                             <div class="form-group"> <label for="pad-oem" class="input-label">OEM (separados por coma)</label> <input type="text" id="pad-oem" class="text-input"> </div>
                             <div class="form-group"> <label for="pad-fmsi" class="input-label">FMSI (separados por coma)</label> <input type="text" id="pad-fmsi" class="text-input"> </div>
@@ -102,9 +103,11 @@
                             <div class="form-group span-2"> <label for="pad-imagenes" class="input-label">URLs Imágenes (separadas por coma)</label> <input type="text" id="pad-imagenes" class="text-input" placeholder="url1.jpg, url2.jpg, ..."> </div>
                         </form>
                     </div>
-                    <div class="card"> <h2 class="card-title">Aplicaciones (Vehículos)</h2>
+                    <div class="card">
+                        <h2 class="card-title">Aplicaciones (Vehículos)</h2>
                          <p class="card-description" id="app-form-description">Añade vehículos compatibles.</p>
-                        <form id="app-form" class="form-grid cols-2" onsubmit="return false;"> <input type="hidden" id="editing-app-index" value="-1">
+                        <form id="app-form" class="form-grid cols-2" onsubmit="return false;">
+                             <input type="hidden" id="editing-app-index" value="-1">
                              <div class="form-group"> <label for="app-marca" class="input-label">Marca</label> <input type="text" id="app-marca" class="text-input" required> </div>
                              <div class="form-group"> <label for="app-serie" class="input-label">Serie / Modelo</label> <input type="text" id="app-serie" class="text-input" required> </div>
                              <div class="form-group"> <label for="app-litros" class="input-label">Litros / Motor</label> <input type="text" id="app-litros" class="text-input"> </div>
@@ -117,9 +120,12 @@
                         </form>
                         <h3 class="list-title">Aplicaciones Actuales / Añadidas:</h3>
                         <ul id="current-apps-list" class="app-list"> <li class="empty-list">Ninguna todavía</li> </ul>
-
+                        
+                        <span id="save-pad-status" class="status-message" style="margin-bottom: 1rem;"></span>
+                        
                         <button id="save-pad-btn" class="btn btn-primary btn-cta" type="button"> <span class="material-icons-outlined">save</span> <span id="save-button-text">Guardar Pastilla</span> </button>
-                    </div> </div>
+                    </div>
+                </div>
 
                 <div id="export-data" class="content-section">
                      <div class="card">
@@ -154,6 +160,16 @@
         </button>
     </div>
 
+    <div id="confirm-modal-overlay" class="modal-overlay" style="display: none;">
+        <div id="confirm-modal-content" class="card modal-card">
+            <h2 class="card-title" id="confirm-modal-title">Confirmar Acción</h2>
+            <p class="card-description" id="confirm-modal-message">¿Estás seguro?</p>
+            <div class="button-group modal-buttons">
+                <button id="confirm-modal-btn-no" class="btn btn-outline" type="button">Cancelar</button>
+                <button id="confirm-modal-btn-yes" class="btn btn-danger" type="button">Confirmar</button>
+            </div>
+        </div>
+    </div>
     <script src="admin-script.js"></script>
 </body>
 </html>
