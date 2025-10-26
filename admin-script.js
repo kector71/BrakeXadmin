@@ -64,8 +64,6 @@ document.addEventListener('DOMContentLoaded', () => {
             confirmModalMessage: document.getElementById('confirm-modal-message'),
             confirmModalBtnYes: document.getElementById('confirm-modal-btn-yes'),
             confirmModalBtnNo: document.getElementById('confirm-modal-btn-no'),
-            
-            // --- NUEVO BOTÓN ---
             exportExcelBtn: document.getElementById('export-excel-btn'),
         };
         
@@ -81,7 +79,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // ----- FUNCIONES -----
 
-    // --- MODAL DE CONFIRMACIÓN ---
     let confirmResolve = null;
     const showCustomConfirm = (message, title = "Confirmar Acción", confirmText = "Confirmar", confirmClass = "btn-danger") => {
         if (!els.confirmModalOverlay || !els.confirmModalTitle || !els.confirmModalMessage || !els.confirmModalBtnYes) {
@@ -105,7 +102,6 @@ document.addEventListener('DOMContentLoaded', () => {
              if (confirmResolve) { confirmResolve(result); confirmResolve = null; }
         }, 200); 
     };
-    // --- FIN MODAL ---
 
     const setActiveSection = (sectionId) => {
         if (!sectionId || typeof sectionId !== 'string') return;
@@ -125,7 +121,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         } else {
             console.error(`Sección con ID '${sectionId}' no encontrada. Volviendo a dashboard.`);
-            setActiveSection('dashboard'); // Llama recursivamente para setear dashboard
+            setActiveSection('dashboard');
         }
     };
 
@@ -321,14 +317,14 @@ document.addEventListener('DOMContentLoaded', () => {
         circle.addEventListener('animationend', () => { if (circle.parentNode) circle.remove(); }, { once: true });
     };
     
-    // --- FUNCIÓN PROCESAR EXCEL (JS) ---
+    
+    // --- FUNCIÓN PROCESAR EXCEL (CORREGIDA) ---
     /**
      * @param {File} file - El archivo .xlsx
      * @returns {Promise<Array>} - Una promesa que resuelve con el masterPadList
      */
     const processExcelFile = (file) => {
         return new Promise((resolve, reject) => {
-            // Verificar que XLSX esté cargado
             if (typeof XLSX === 'undefined') {
                 return reject(new Error("La librería XLSX no se pudo cargar. Revisa la conexión a internet."));
             }
@@ -349,22 +345,26 @@ document.addEventListener('DOMContentLoaded', () => {
                     const headers = jsonData[0].map(h => String(h).trim());
                     const rows = jsonData.slice(1);
                     
-                    // Encontrar los índices de las columnas que nos importan
+                    // --- ¡CORREGIDO! Nombres de columna que coinciden con la imagen image_826955.png ---
                     const colMap = {
-                        ref: headers.indexOf('Ref'), // <-- 'Ref' (Mayúscula)
-                        fmsi: headers.indexOf('Platina FMSI'),
-                        posicion: headers.indexOf('Posición'),
-                        marca: headers.indexOf('Marca'),
-                        serie: headers.indexOf('Modelo'),
-                        anio: headers.indexOf('Año combinado'),
-                        litros: headers.indexOf('Litros'),
-                        espec: headers.indexOf('Especificacion')
+                        ref: headers.indexOf('ref'),            // minúscula
+                        fmsi: headers.indexOf('fmsi'),          // minúscula
+                        posicion: headers.indexOf('posición'),  // minúscula con tilde
+                        marca: headers.indexOf('marca'),        // minúscula
+                        serie: headers.indexOf('serie'),        // minúscula
+                        anio: headers.indexOf('año'),           // minúscula con tilde
+                        litros: headers.indexOf('litros'),      // minúscula
+                        espec: headers.indexOf('especificacion') // minúscula
                     };
 
+                    // Verificar que las columnas esenciales existan
                     if (colMap.ref === -1 || colMap.marca === -1 || colMap.serie === -1 || colMap.anio === -1) {
-                        console.error("Columnas requeridas no encontradas. Detectadas:", headers);
-                        throw new Error("El Excel no tiene las columnas requeridas. Se necesita: 'Ref', 'Marca', 'Modelo', 'Año combinado'.");
+                        console.error("Columnas detectadas:", headers);
+                        // Mensaje de error actualizado
+                        throw new Error("El Excel no tiene las columnas requeridas. Se necesita: 'ref', 'marca', 'serie', 'año'.");
                     }
+                    // --- FIN DE LA CORRECCIÓN ---
+
 
                     console.log(`✅ Leídas ${rows.length} filas desde Excel. Procesando...`);
                     
@@ -373,7 +373,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     // Función para capitalizar
                     const toTitleCase = (str) => {
                         if (!str) return "";
-                        return str.replace(/\w\S*/g, txt => txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase());
+                        return str.toLowerCase().replace(/\b\w/g, char => char.toUpperCase());
                     };
 
                     // Función para formatear años
@@ -382,21 +382,26 @@ document.addEventListener('DOMContentLoaded', () => {
                         const partes = anio_str.split('-');
                         const partes_procesadas = partes.map(parte => {
                             const parte_limpia = parte.trim();
-                            if (parte_limpia.length === 4 && /^\d{4}$/.test(parte_limpia)) {
+                            if (parte_limpia.length === 4 && /^(19|20)\d{2}$/.test(parte_limpia)) {
                                 return parte_limpia.substring(2); // '1999' -> '99'
                             } else if (parte_limpia.length === 2 && /^\d{2}$/.test(parte_limpia)) {
                                 return parte_limpia; // '99' -> '99'
                             }
-                            return parte_limpia; // Mantener si no es un año (ej: 'Actual')
+                            return parte_limpia;
                         });
-                        return partes_procesadas.join('-');
+                        const aniosUnidos = partes_procesadas.filter(Boolean).join('-');
+                        const aniosPartidos = aniosUnidos.split('-');
+                        if (aniosPartidos.length === 2 && aniosPartidos[0] === aniosPartidos[1]) {
+                            return aniosPartidos[0]; // Solo '99'
+                        }
+                        return aniosUnidos;
                     };
                     
                     for (const [index, fila] of rows.entries()) {
                         const ref_id_val = String(fila[colMap.ref] || '').trim();
                         
                         if (!ref_id_val) {
-                             console.warn(`⚠️ Advertencia: Fila ${index + 2} ignorada (columna 'Ref' está vacía)`);
+                             console.warn(`⚠️ Advertencia: Fila ${index + 2} ignorada (columna 'ref' está vacía)`);
                              continue;
                         }
 
@@ -460,31 +465,20 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     };
     
-    // --- FUNCIÓN EXPORTAR A EXCEL (MEJORADA) ---
+    // --- FUNCIÓN EXPORTAR A EXCEL (CORREGIDA) ---
     const exportToExcel = () => {
         if (!Array.isArray(masterPadList) || masterPadList.length === 0) {
             showStatus(els.downloadStatus, "No hay datos para exportar a Excel.", true);
             return;
         }
-
         console.log("Aplanando datos para exportar a Excel...");
         
-        // 1. Aplanar los datos a un array de objetos (para json_to_sheet)
         const flattenedData = [];
-        // Nombres de encabezado para el Excel
-        const headers = {
-            ref: 'Ref',
-            oem: 'Oem',
-            fmsi: 'Platina FMSI',
-            posicion: 'Posición',
-            medidas: 'Medidas',
-            imagenes: 'Imagenes',
-            marca: 'Marca',
-            serie: 'Modelo',
-            litros: 'Litros',
-            anio: 'Año', // Usar 'Año' en lugar de 'Año combinado'
-            especificacion: 'Especificacion'
-        };
+        // --- ¡CORREGIDO! Encabezados del Excel exportado para que coincidan con la importación ---
+        const headers = [
+            'ref', 'oem', 'fmsi', 'posición', 'medidas', 'imagenes',
+            'marca', 'serie', 'litros', 'año', 'especificacion'
+        ];
 
         for (const pad of masterPadList) {
             const refString = (pad.ref || []).join(', ');
@@ -494,53 +488,48 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (pad.aplicaciones && pad.aplicaciones.length > 0) {
                 for (const app of pad.aplicaciones) {
+                    // --- ¡CORREGIDO! Usar nombres de clave con minúsculas/tildes ---
                     flattenedData.push({
-                        [headers.ref]: refString,
-                        [headers.oem]: oemString,
-                        [headers.fmsi]: fmsiString,
-                        [headers.posicion]: pad.posición || '',
-                        [headers.medidas]: pad.medidas || '',
-                        [headers.imagenes]: imagenesString,
-                        [headers.marca]: app.marca || '',
-                        [headers.serie]: app.serie || '',
-                        [headers.litros]: app.litros || '',
-                        [headers.anio]: app.año || '', // Usar 'año'
-                        [headers.especificacion]: app.especificacion || ''
+                        'ref': refString,
+                        'oem': oemString,
+                        'fmsi': fmsiString,
+                        'posición': pad.posición || '',
+                        'medidas': pad.medidas || '',
+                        'imagenes': imagenesString,
+                        'marca': app.marca || '',
+                        'serie': app.serie || '',
+                        'litros': app.litros || '',
+                        'año': app.año || '',
+                        'especificacion': app.especificacion || ''
                     });
                 }
             } else {
                 flattenedData.push({
-                    [headers.ref]: refString,
-                    [headers.oem]: oemString,
-                    [headers.fmsi]: fmsiString,
-                    [headers.posicion]: pad.posición || '',
-                    [headers.medidas]: pad.medidas || '',
-                    [headers.imagenes]: imagenesString,
+                    'ref': refString,
+                    'oem': oemString,
+                    'fmsi': fmsiString,
+                    'posición': pad.posición || '',
+                    'medidas': pad.medidas || '',
+                    'imagenes': imagenesString,
                 });
             }
         }
         
         try {
-            // 2. Crear la hoja de trabajo (Worksheet) desde el JSON aplanado
             const ws = XLSX.utils.json_to_sheet(flattenedData, { 
-                header: Object.values(headers) // Asegurar el orden de los encabezados
+                header: headers // Asegurar el orden
             });
             
-            // 3. Añadir AutoFilter a la hoja
             ws['!autofilter'] = { ref: XLSX.utils.encode_range(XLSX.utils.decode_range(ws['!ref'])) };
             
-            // 4. Ajustar ancho de columnas
             const colWidths = [
                 {wch: 20}, {wch: 15}, {wch: 15}, {wch: 10}, {wch: 15}, {wch: 20},
                 {wch: 20}, {wch: 25}, {wch: 10}, {wch: 15}, {wch: 25}
             ];
             ws['!cols'] = colWidths;
 
-            // 5. Crear el libro de trabajo (Workbook) y añadir la hoja
             const wb = XLSX.utils.book_new();
             XLSX.utils.book_append_sheet(wb, ws, 'Pastillas');
-
-            // 6. Escribir y descargar el archivo
             XLSX.writeFile(wb, 'data_exportada.xlsx');
             
             showStatus(els.downloadStatus, `data_exportada.xlsx generado con ${flattenedData.length} filas.`, false);
