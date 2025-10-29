@@ -34,7 +34,7 @@ document.addEventListener('DOMContentLoaded', () => {
             padOem: document.getElementById('pad-oem'),
             padFmsi: document.getElementById('pad-fmsi'),
             padPosicion: document.getElementById('pad-posicion'),
-            padMedidas: document.getElementById('pad-medidas'),
+            padMedidas: document.getElementById('pad-medidas'), // <--- ACTUALIZADO
             padImagenes: document.getElementById('pad-imagenes'),
             appForm: document.getElementById('app-form'),
             editingAppIndexInput: document.getElementById('editing-app-index'),
@@ -280,7 +280,22 @@ document.addEventListener('DOMContentLoaded', () => {
         if (els.padOem) els.padOem.value = (Array.isArray(padData.oem) ? padData.oem : []).join(', ');
         if (els.padFmsi) els.padFmsi.value = (Array.isArray(padData.fmsi) ? padData.fmsi : []).join(', ');
         if (els.padPosicion) els.padPosicion.value = padData.posición || 'Delantera';
-        if (els.padMedidas) els.padMedidas.value = padData.medidas || '';
+        
+        // --- INICIO DE MODIFICACIÓN: Cargar Medidas (Compatible con String y Array) ---
+        if (els.padMedidas) {
+            if (typeof padData.medidas === 'string') {
+                // Formato Antiguo: "medidas": "131.5 x 52.5"
+                els.padMedidas.value = padData.medidas || '';
+            } else if (Array.isArray(padData.medidas)) {
+                // Formato Nuevo: "medidas": ["131.5 x 52.5", "100.0 x 40.0"]
+                els.padMedidas.value = padData.medidas.join(', ');
+            } else {
+                // No hay medidas
+                els.padMedidas.value = '';
+            }
+        }
+        // --- FIN DE MODIFICACIÓN ---
+
         if (els.padImagenes) els.padImagenes.value = (Array.isArray(padData.imagenes) ? padData.imagenes : []).join(', ');
         currentApps = Array.isArray(padData.aplicaciones) ? JSON.parse(JSON.stringify(padData.aplicaciones)) : [];
         const firstRefId = (Array.isArray(padData.ref) && padData.ref.length > 0) ? padData.ref[0] : '';
@@ -345,26 +360,23 @@ document.addEventListener('DOMContentLoaded', () => {
                     const headers = jsonData[0].map(h => String(h).trim());
                     const rows = jsonData.slice(1);
                     
-                    // --- ¡CORREGIDO! Nombres de columna que coinciden con la imagen image_826955.png ---
+                    // --- Nombres de columna que coinciden con la importación ---
                     const colMap = {
-                        ref: headers.indexOf('ref'),            // minúscula
-                        fmsi: headers.indexOf('fmsi'),          // minúscula
-                        posicion: headers.indexOf('posición'),  // minúscula con tilde
-                        marca: headers.indexOf('marca'),        // minúscula
-                        serie: headers.indexOf('serie'),        // minúscula
-                        anio: headers.indexOf('año'),           // minúscula con tilde
-                        litros: headers.indexOf('litros'),      // minúscula
-                        espec: headers.indexOf('especificacion') // minúscula
+                        ref: headers.indexOf('ref'),
+                        fmsi: headers.indexOf('fmsi'),
+                        posicion: headers.indexOf('posición'),
+                        marca: headers.indexOf('marca'),
+                        serie: headers.indexOf('serie'),
+                        anio: headers.indexOf('año'),
+                        litros: headers.indexOf('litros'),
+                        espec: headers.indexOf('especificacion')
                     };
 
                     // Verificar que las columnas esenciales existan
                     if (colMap.ref === -1 || colMap.marca === -1 || colMap.serie === -1 || colMap.anio === -1) {
                         console.error("Columnas detectadas:", headers);
-                        // Mensaje de error actualizado
                         throw new Error("El Excel no tiene las columnas requeridas. Se necesita: 'ref', 'marca', 'serie', 'año'.");
                     }
-                    // --- FIN DE LA CORRECCIÓN ---
-
 
                     console.log(`✅ Leídas ${rows.length} filas desde Excel. Procesando...`);
                     
@@ -434,7 +446,7 @@ document.addEventListener('DOMContentLoaded', () => {
                                 "oem": [],
                                 "fmsi": [fmsi_val].filter(Boolean),
                                 "posición": posicion_json,
-                                "medidas": "", 
+                                "medidas": [], // <--- ACTUALIZADO
                                 "imagenes": [],
                                 "aplicaciones": [aplicacion_actual]
                             };
@@ -474,11 +486,11 @@ document.addEventListener('DOMContentLoaded', () => {
         console.log("Aplanando datos para exportar a Excel...");
         
         const flattenedData = [];
-        // --- ¡CORREGIDO! Encabezados del Excel exportado para que coincidan con la importación ---
+        // --- Encabezados del Excel exportado ---
         const headers = [
             'ref', 'oem', 'fmsi', 'posición', 'medidas', 'imagenes',
             'marca', 'serie', 'litros', 'año', 'especificacion'
-        ];
+        ]; // <--- ACTUALIZADO
 
         for (const pad of masterPadList) {
             const refString = (pad.ref || []).join(', ');
@@ -486,15 +498,18 @@ document.addEventListener('DOMContentLoaded', () => {
             const fmsiString = (pad.fmsi || []).join(', ');
             const imagenesString = (pad.imagenes || []).join(', ');
 
+            // --- INICIO DE MODIFICACIÓN: Exportar Medidas (Compatible con String y Array) ---
+            const medidasString = (Array.isArray(pad.medidas) ? pad.medidas.join(', ') : (pad.medidas || ''));
+            // --- FIN DE MODIFICACIÓN ---
+
             if (pad.aplicaciones && pad.aplicaciones.length > 0) {
                 for (const app of pad.aplicaciones) {
-                    // --- ¡CORREGIDO! Usar nombres de clave con minúsculas/tildes ---
                     flattenedData.push({
                         'ref': refString,
                         'oem': oemString,
                         'fmsi': fmsiString,
                         'posición': pad.posición || '',
-                        'medidas': pad.medidas || '',
+                        'medidas': medidasString, // <--- ACTUALIZADO
                         'imagenes': imagenesString,
                         'marca': app.marca || '',
                         'serie': app.serie || '',
@@ -509,7 +524,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     'oem': oemString,
                     'fmsi': fmsiString,
                     'posición': pad.posición || '',
-                    'medidas': pad.medidas || '',
+                    'medidas': medidasString, // <--- ACTUALIZADO
                     'imagenes': imagenesString,
                 });
             }
@@ -525,7 +540,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const colWidths = [
                 {wch: 20}, {wch: 15}, {wch: 15}, {wch: 10}, {wch: 15}, {wch: 20},
                 {wch: 20}, {wch: 25}, {wch: 10}, {wch: 15}, {wch: 25}
-            ];
+            ]; // <--- ACTUALIZADO
             ws['!cols'] = colWidths;
 
             const wb = XLSX.utils.book_new();
@@ -764,7 +779,9 @@ document.addEventListener('DOMContentLoaded', () => {
                     oem: (els.padOem?.value || '').split(',').map(s => s.trim()).filter(Boolean),
                     fmsi: (els.padFmsi?.value || '').split(',').map(s => s.trim()).filter(Boolean),
                     posición: els.padPosicion?.value || 'Delantera',
-                    medidas: (els.padMedidas?.value || '').trim(),
+                    // --- INICIO DE MODIFICACIÓN: Guardar Medidas (Nuevo Formato Array) ---
+                    medidas: (els.padMedidas?.value || '').split(',').map(s => s.trim()).filter(Boolean),
+                    // --- FIN DE MODIFICACIÓN ---
                     imagenes: (els.padImagenes?.value || '').split(',').map(s => s.trim()).filter(Boolean),
                     aplicaciones: Array.isArray(currentApps) ? currentApps : [],
                 };
