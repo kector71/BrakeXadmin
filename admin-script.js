@@ -1,4 +1,4 @@
-document.addEventListener('DOMContentLoaded', () => {
+Document.addEventListener('DOMContentLoaded', () => {
     console.log("Admin script loaded. DOM ready.");
 
     // ----- VARIABLES GLOBALES -----
@@ -146,7 +146,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (els.formModeTitle) els.formModeTitle.textContent = "Añadir Nueva Pastilla";
         if (els.saveButtonText) els.saveButtonText.textContent = "Guardar Pastilla";
         if (els.savePadBtn) {
-            els.savePadBtn.classList.remove('btn-secondary');
+            els.savePadBtn.classList.remove('btn-secondary'); // <- Corrección 2 (Visual)
             els.savePadBtn.classList.add('btn-primary');
         }
         if (els.searchRef) els.searchRef.value = '';
@@ -303,7 +303,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (els.saveButtonText) els.saveButtonText.textContent = "Actualizar Pastilla";
         if (els.savePadBtn) {
             els.savePadBtn.classList.remove('btn-primary');
-            els.savePadBtn.classList.add('btn-primary');
+            els.savePadBtn.classList.add('btn-secondary'); // <--- CORRECCIÓN 2 (VISUAL)
         }
         if (els.clearSearchBtn) els.clearSearchBtn.style.display = 'inline-flex';
         if (els.searchResults) els.searchResults.innerHTML = '';
@@ -572,7 +572,19 @@ document.addEventListener('DOMContentLoaded', () => {
             item.addEventListener('click', (e) => {
                 e.preventDefault();
                 const section = item.dataset?.section;
-                if (section) setActiveSection(section);
+                if (section) {
+                    
+                    // --- INICIO CORRECCIÓN 1 (LÓGICA) ---
+                    // Si el usuario hace clic en el nav para ir a editar/añadir,
+                    // siempre reseteamos el formulario al modo "Añadir Nuevo".
+                    // El flujo de "Cargar" desde la búsqueda no pasa por aquí.
+                    if (section === 'edit-pad') {
+                        resetFormsAndMode();
+                    }
+                    // --- FIN CORRECCIÓN 1 (LÓGICA) ---
+
+                    setActiveSection(section);
+                }
             });
         });
 
