@@ -7,15 +7,12 @@ document.addEventListener('DOMContentLoaded', () => {
     let editIndex = -1;
     let editingAppIndex = -1;
     let totalAppsInList = 0;
-    let autocompleteData = {}; // <-- Para Autocompletado
-    let imagePreviewTimeout; // <-- Para Previsualización de Imágenes
-    let searchTimeout; // <-- Para Búsqueda
+    let autocompleteData = {}; 
+    let imagePreviewTimeout; 
+    let searchTimeout; 
 
     // --- Expresiones Regulares para Validación ---
-    // Acepta: 99, 05, 99-05, 2005, 2010-2015
     const anioRegex = /^(?:(\d{2}|\d{4})(?:-(\d{2}|\d{4}))?)$/;
-    // Acepta: 131.5 x 52.5 (con o sin espacios, con o sin decimales)
-    // Acepta: 131.5 x 52.5, 100 x 40
     const medidasRegex = /^\d+(\.\d+)?\s*x\s*\d+(\.\d+)?(,\s*\d+(\.\d+)?\s*x\s*\d+(\.\d+)?)*$/;
 
 
@@ -24,6 +21,12 @@ document.addEventListener('DOMContentLoaded', () => {
     try {
         console.log("Attempting to obtain DOM elements...");
         els = {
+            // ▼▼▼ NUEVOS ELEMENTOS PARA MENÚ MÓVIL ▼▼▼
+            appLayout: document.querySelector('.app-layout'),
+            menuToggleBtn: document.getElementById('menu-toggle-btn'),
+            sidebarOverlay: document.getElementById('sidebar-overlay'),
+            // ▲▲▲ FIN NUEVOS ELEMENTOS ▲▲▲
+
             navItems: document.querySelectorAll('.nav-item'),
             contentSections: document.querySelectorAll('.content-section'),
             pageTitle: document.getElementById('page-title'),
@@ -80,13 +83,13 @@ document.addEventListener('DOMContentLoaded', () => {
             confirmModalBtnYes: document.getElementById('confirm-modal-btn-yes'),
             confirmModalBtnNo: document.getElementById('confirm-modal-btn-no'),
             exportExcelBtn: document.getElementById('export-excel-btn'),
-            marcasList: document.getElementById('marcas-list'), // <-- AÑADIDO
-            seriesList: document.getElementById('series-list') // <-- AÑADIDO
+            marcasList: document.getElementById('marcas-list'), 
+            seriesList: document.getElementById('series-list') 
         };
         
         // Verificación de elementos esenciales
-        if (!els.pageTitle || !els.searchType || !els.deletePadBtn || !els.duplicatePadBtn || !els.imagePreviewContainer || !els.marcasList) {
-             throw new Error("Elementos esenciales del layout o formulario no encontrados (page-title, search-type, delete-pad-btn, duplicate-pad-btn, image-preview-container, marcas-list, etc).");
+        if (!els.appLayout || !els.menuToggleBtn || !els.sidebarOverlay || !els.marcasList) {
+             throw new Error("Elementos esenciales del layout o formulario no encontrados (appLayout, menuToggleBtn, sidebarOverlay, marcas-list, etc).");
         }
         console.log("DOM elements obtained successfully.");
     } catch (error) {
@@ -96,6 +99,16 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // ----- FUNCIONES -----
+    
+    // --- ▼▼▼ NUEVAS FUNCIONES MENÚ MÓVIL ▼▼▼ ---
+    const openSidebar = () => {
+        if (els.appLayout) els.appLayout.classList.replace('sidebar-closed', 'sidebar-open');
+    };
+    const closeSidebar = () => {
+        if (els.appLayout) els.appLayout.classList.replace('sidebar-open', 'sidebar-closed');
+    };
+    // --- ▲▲▲ FIN NUEVAS FUNCIONES ▲▲▲ ---
+
 
     // Modal de Confirmación
     let confirmResolve = null;
@@ -143,9 +156,11 @@ document.addEventListener('DOMContentLoaded', () => {
             console.error(`Sección con ID '${sectionId}' no encontrada. Volviendo a dashboard.`);
             setActiveSection('dashboard');
         }
+        
+        closeSidebar(); // <-- AÑADIDO: Cierra el menú al hacer clic en un ítem
     };
     
-    // --- FUNCIÓN 3: PREVISUALIZACIÓN DE IMÁGENES ---
+    // Previsualización de Imágenes
     const renderImagePreview = () => {
         if (!els.imagePreviewContainer || !els.padImagenes) return;
         const imageUrls = els.padImagenes.value.split(',').map(url => url.trim()).filter(Boolean);
@@ -169,12 +184,12 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     };
     
-    // --- ▼▼▼ FUNCIÓN 2: VALIDACIÓN DE CAMPOS ▼▼▼ ---
+    // Validación de Campos
     const validateField = (element, regex) => {
         if (!element) return false;
         const value = element.value.trim();
         
-        if (value === "") { // Campo vacío es válido (opcional)
+        if (value === "") { 
             element.classList.remove('is-valid', 'is-invalid');
             return true;
         }
@@ -189,9 +204,8 @@ document.addEventListener('DOMContentLoaded', () => {
             return false;
         }
     };
-    // --- ▲▲▲ FIN FUNCIÓN 2 ▲▲▲ ---
 
-    // --- ▼▼▼ FUNCIÓN 1: AUTOCOMPLETADO ▼▼▼ ---
+    // Autocompletado
     const generateAutocompleteData = (pads) => {
         autocompleteData = {};
         if (!Array.isArray(pads)) return;
@@ -223,7 +237,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const updateSerieDatalist = (selectedMarca) => {
         if (!els.seriesList) return;
-        els.seriesList.innerHTML = ''; // Limpiar siempre
+        els.seriesList.innerHTML = ''; 
         
         const marcaData = autocompleteData[selectedMarca];
         if (marcaData && marcaData.size > 0) {
@@ -231,7 +245,6 @@ document.addEventListener('DOMContentLoaded', () => {
             els.seriesList.innerHTML = series.map(serie => `<option value="${serie}"></option>`).join('');
         }
     };
-    // --- ▲▲▲ FIN FUNCIÓN 1 ▲▲▲ ---
 
 
     // Resets de Formularios
@@ -247,7 +260,6 @@ document.addEventListener('DOMContentLoaded', () => {
         if (els.cancelEditAppBtn) els.cancelEditAppBtn.style.display = 'none';
         if (els.appFormDescription) els.appFormDescription.textContent = "Añade vehículos compatibles.";
         
-        // Limpiar validación y datalist
         if (els.appAnio) els.appAnio.classList.remove('is-valid', 'is-invalid');
         if (els.seriesList) els.seriesList.innerHTML = '';
     };
@@ -388,8 +400,8 @@ document.addEventListener('DOMContentLoaded', () => {
         if (els.appAnio) els.appAnio.value = app.año || '';
         if (els.appEspec) els.appEspec.value = app.especificacion || '';
         
-        validateField(els.appAnio, anioRegex); // <-- Validar campo
-        updateSerieDatalist(app.marca || ""); // <-- Poblar series
+        validateField(els.appAnio, anioRegex); 
+        updateSerieDatalist(app.marca || ""); 
 
         if (els.addAppButtonText) els.addAppButtonText.textContent = "Actualizar App";
         if (els.addUpdateAppBtn) {
@@ -419,7 +431,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 els.padMedidas.value = '';
             }
         }
-        validateField(els.padMedidas, medidasRegex); // <-- Validar campo
+        validateField(els.padMedidas, medidasRegex); 
 
         if (els.padImagenes) els.padImagenes.value = (Array.isArray(padData.imagenes) ? padData.imagenes : []).join(', ');
         renderImagePreview(); 
@@ -678,6 +690,17 @@ document.addEventListener('DOMContentLoaded', () => {
     try {
         console.log("Adding event listeners...");
 
+        // --- ▼▼▼ LISTENERS MENÚ MÓVIL ▼▼▼ ---
+        els.menuToggleBtn.addEventListener('click', () => {
+            if (els.appLayout.classList.contains('sidebar-open')) {
+                closeSidebar();
+            } else {
+                openSidebar();
+            }
+        });
+        els.sidebarOverlay.addEventListener('click', closeSidebar);
+        // --- ▲▲▲ FIN LISTENERS MENÚ MÓVIL ▲▲▲ ---
+
         // Modales
         els.confirmModalBtnYes?.addEventListener('click', () => hideCustomConfirm(true));
         els.confirmModalBtnNo?.addEventListener('click', () => hideCustomConfirm(false));
@@ -724,8 +747,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
                 
                 masterPadList = data;
-                generateAutocompleteData(masterPadList); // <-- AÑADIDO
-                updateMarcaDatalist(); // <-- AÑADIDO
+                generateAutocompleteData(masterPadList); 
+                updateMarcaDatalist(); 
                 
                 updateDashboardStats();
                 showStatus(els.importStatus, `¡Éxito! ${masterPadList.length} pastillas cargadas desde ${file.name}.`, false);
@@ -736,8 +759,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 console.error("Error al procesar archivo:", err);
                 showStatus(els.importStatus, `Error: ${err.message}`, true);
                 masterPadList = [];
-                generateAutocompleteData([]); // <-- Limpiar autocompletado en error
-                updateMarcaDatalist(); // <-- Limpiar autocompletado en error
+                generateAutocompleteData([]); 
+                updateMarcaDatalist(); 
                 updateDashboardStats();
                 if (els.fileName) els.fileName.textContent = file.name + " (Error)";
                 if (els.jsonOutput) els.jsonOutput.value = '';
@@ -860,7 +883,6 @@ document.addEventListener('DOMContentLoaded', () => {
         els.appForm.addEventListener('submit', (e) => {
             e.preventDefault();
             
-            // --- Validar campos antes de guardar ---
             const isAnioValid = validateField(els.appAnio, anioRegex);
             if (!isAnioValid) {
                  showStatus(els.savePadStatus, "El formato del Año de la aplicación es incorrecto.", true, 3000);
@@ -923,7 +945,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Guardar/Actualizar Pastilla
         els.savePadBtn.addEventListener('click', () => {
-            // --- Validar campos antes de guardar ---
             const isMedidasValid = validateField(els.padMedidas, medidasRegex);
             if (!isMedidasValid) {
                  showStatus(els.savePadStatus, "El formato de Medidas es incorrecto. Debe ser '100 x 50' o '100 x 50, 110 x 60'.", true, 5000);
@@ -963,7 +984,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 message = `¡Pastilla "${refsArray[0]}" guardada!`;
             }
             
-            // Regenerar autocompletado por si se añadió una nueva marca/serie
             generateAutocompleteData(masterPadList);
             updateMarcaDatalist();
 
@@ -989,7 +1009,6 @@ document.addEventListener('DOMContentLoaded', () => {
             if (confirmed) {
                 masterPadList.splice(editIndex, 1); 
                 
-                // Regenerar autocompletado por si se eliminó la última marca/serie
                 generateAutocompleteData(masterPadList);
                 updateMarcaDatalist();
 
@@ -1034,7 +1053,7 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         }
         
-        // --- ▼▼▼ LISTENERS PARA VALIDACIÓN Y AUTOCOMPLETADO ▼▼▼ ---
+        // --- LISTENERS PARA VALIDACIÓN Y AUTOCOMPLETADO ---
         if(els.appMarca) {
             els.appMarca.addEventListener('input', () => updateSerieDatalist(els.appMarca.value.trim()));
         }
@@ -1044,7 +1063,6 @@ document.addEventListener('DOMContentLoaded', () => {
         if(els.padMedidas) {
             els.padMedidas.addEventListener('input', () => validateField(els.padMedidas, medidasRegex));
         }
-        // --- ▲▲▲ FIN LISTENERS ▲▲▲ ---
 
 
         // Generar y Descargar JSON
@@ -1097,8 +1115,8 @@ document.addEventListener('DOMContentLoaded', () => {
             const confirmed = await showCustomConfirm(message, "Limpiar Sesión", "Sí, Limpiar Todo", "btn-danger");
             if (confirmed) {
                 masterPadList = [];
-                generateAutocompleteData([]); // <-- Limpiar
-                updateMarcaDatalist(); // <-- Limpiar
+                generateAutocompleteData([]); 
+                updateMarcaDatalist(); 
                 resetFormsAndMode();
                 updateDashboardStats();
                 if (els.jsonOutput) els.jsonOutput.value = '';
