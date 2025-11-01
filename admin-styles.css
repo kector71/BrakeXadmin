@@ -92,19 +92,42 @@ body {
     width: 260px;
     left: 0;
     top: 0;
-    z-index: 1100; /* Z-index alto para estar sobre el overlay */
-    transition: transform 0.3s ease-out; /* Transición para deslizarse */
+    z-index: 1100; 
+    transition: transform 0.3s ease-out; 
 }
 .sidebar-header {
     display: flex;
     align-items: center;
+    justify-content: space-between; /* <-- MODIFICADO */
     gap: 0.75rem;
     font-size: 1.25rem;
     font-weight: 700;
 }
+/* Nuevo grupo para el logo */
+.sidebar-logo-group {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
 .logo-icon { 
     color: var(--btn-primary-bg); 
 }
+/* Botón 'X' de cerrar */
+#sidebar-close-btn {
+    display: none; /* Oculto en desktop */
+    width: 44px;
+    height: 44px;
+    padding: 0;
+    border: none;
+    background-color: transparent;
+    color: var(--text-color-secondary);
+    border-radius: 50%;
+}
+#sidebar-close-btn:hover {
+    color: var(--text-color-primary);
+    background-color: var(--bg-color);
+}
+
 
 /* Navegación */
 .nav-menu {
@@ -136,7 +159,7 @@ body {
     grid-column: 2 / 3;
     display: flex;
     flex-direction: column;
-    transition: grid-column 0.3s ease-out; /* Transición para layout */
+    transition: grid-column 0.3s ease-out; 
 }
 .content-header {
     padding: 1.5rem 2rem;
@@ -145,12 +168,12 @@ body {
     position: sticky;
     top: 0;
     z-index: 900;
-    display: flex; /* Añadido para alinear el botón */
-    align-items: center; /* Añadido para alinear el botón */
-    gap: 1rem; /* Espacio entre botón y título */
+    display: flex; 
+    align-items: center; 
+    gap: 1rem; 
 }
 #menu-toggle-btn {
-    display: none; /* Oculto en desktop */
+    display: none; 
     width: 44px;
     height: 44px;
     padding: 0;
@@ -277,7 +300,7 @@ body {
     box-shadow: 0 0 0 2px rgba(74, 144, 226, 0.2);
 }
 
-/* Estilos de Validación */
+/* --- Estilos de Validación --- */
 .text-input.is-valid {
     border-color: #38a169; 
     background-color: #f0fff4; 
@@ -692,12 +715,12 @@ span.ripple {
     opacity: 0.5;
 }
 
-/* --- ▼▼▼ NUEVOS ESTILOS PARA SIDEBAR MÓVIL ▼▼▼ --- */
+/* --- Overlay del Sidebar Móvil --- */
 #sidebar-overlay {
     position: fixed;
     inset: 0;
     background-color: rgba(0, 0, 0, 0.5);
-    z-index: 1050; /* Debajo del sidebar, sobre el contenido */
+    z-index: 1050; 
     opacity: 0;
     visibility: hidden;
     transition: opacity 0.3s ease-out, visibility 0.3s ease-out;
@@ -706,7 +729,6 @@ span.ripple {
     opacity: 1;
     visibility: visible;
 }
-/* --- ▲▲▲ FIN NUEVOS ESTILOS ▲▲▲ --- */
 
 
 /* --- Media Queries (Responsive) --- */
@@ -715,23 +737,26 @@ span.ripple {
         grid-template-columns: 1fr; 
     }
     
-    /* --- ▼▼▼ ESTILOS SIDEBAR MÓVIL MODIFICADOS ▼▼▼ --- */
+    /* --- Estilos Sidebar Móvil --- */
     .sidebar { 
-        transform: translateX(-100%); /* Oculto fuera de pantalla */
+        transform: translateX(-100%); /* Oculto por defecto */
         box-shadow: var(--shadow-md);
         border-right: none;
     }
     .app-layout.sidebar-open .sidebar {
-        transform: translateX(0); /* Mostrar sidebar */
+        transform: translateX(0); /* Mostrar */
     }
     .app-layout.sidebar-closed .sidebar {
-        transform: translateX(-100%); /* Ocultar sidebar */
+        transform: translateX(-100%); /* Ocultar */
     }
     
     #menu-toggle-btn {
         display: grid; /* Mostrar botón hamburguesa */
     }
-    /* --- ▲▲▲ FIN ESTILOS SIDEBAR MÓVIL ▲▲▲ --- */
+    #sidebar-close-btn {
+        display: grid; /* Mostrar botón 'X' */
+    }
+    /* --- Fin Estilos Sidebar Móvil --- */
 
     .main-content {
         grid-column: 1 / -1; 
