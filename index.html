@@ -16,11 +16,13 @@
 </head>
 <body>
 
-    <div class="app-layout">
+    <div class="app-layout sidebar-closed">
+        
         <aside class="sidebar">
             <div class="sidebar-header">
                 <span class="material-icons-outlined logo-icon">speed</span>
-                <span class="logo-text">Brake X Admin 1.6</span> </div>
+                <span class="logo-text">Brake X Admin 1.7</span>
+            </div>
             <nav class="nav-menu">
                 <a href="#" class="nav-item active" data-section="dashboard">
                     <span class="material-icons-outlined">dashboard</span>
@@ -43,6 +45,9 @@
 
         <main class="main-content">
             <header class="content-header">
+                <button class="material-btn" id="menu-toggle-btn" aria-label="Abrir menú">
+                    <span class="material-icons-outlined">menu</span>
+                </button>
                 <h1 id="page-title">Dashboard</h1>
             </header>
 
@@ -164,6 +169,7 @@
                                          <label for="app-serie" class="input-label">Serie / Modelo</label> 
                                          <input type="text" id="app-serie" class="text-input" required list="series-list"> 
                                      </div>
+
                                      <div class="form-group"> <label for="app-litros" class="input-label">Litros / Motor</label> <input type="text" id="app-litros" class="text-input"> </div>
                                      
                                      <div class="form-group"> 
@@ -180,6 +186,7 @@
                                 
                                 <datalist id="marcas-list"></datalist>
                                 <datalist id="series-list"></datalist>
+
                                 <h3 class="list-title">Aplicaciones Actuales / Añadidas:</h3>
                                 <ul id="current-apps-list" class="app-list"> <li class="empty-list">Ninguna todavía</li> </ul>
                             </div>
@@ -234,7 +241,8 @@
             </div>
         </div>
     </div>
-
+    
+    <div id="sidebar-overlay"></div>
     <script src="admin-script.js"></script> 
 </body>
 </html>
