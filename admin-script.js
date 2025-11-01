@@ -7,6 +7,17 @@ document.addEventListener('DOMContentLoaded', () => {
     let editIndex = -1;
     let editingAppIndex = -1;
     let totalAppsInList = 0;
+    let autocompleteData = {}; // <-- Para Autocompletado
+    let imagePreviewTimeout; // <-- Para Previsualización de Imágenes
+    let searchTimeout; // <-- Para Búsqueda
+
+    // --- Expresiones Regulares para Validación ---
+    // Acepta: 99, 05, 99-05, 2005, 2010-2015
+    const anioRegex = /^(?:(\d{2}|\d{4})(?:-(\d{2}|\d{4}))?)$/;
+    // Acepta: 131.5 x 52.5 (con o sin espacios, con o sin decimales)
+    // Acepta: 131.5 x 52.5, 100 x 40
+    const medidasRegex = /^\d+(\.\d+)?\s*x\s*\d+(\.\d+)?(,\s*\d+(\.\d+)?\s*x\s*\d+(\.\d+)?)*$/;
+
 
     // ----- DOM ELEMENTS -----
     let els = {};
@@ -22,6 +33,7 @@ document.addEventListener('DOMContentLoaded', () => {
             fileName: document.getElementById('file-name'),
             importStatus: document.getElementById('import-status'),
             searchRef: document.getElementById('search-ref'),
+            searchType: document.getElementById('search-type'), 
             searchBtn: document.getElementById('search-btn'),
             searchResults: document.getElementById('search-results'),
             clearSearchBtn: document.getElementById('clear-search-btn'),
@@ -36,6 +48,7 @@ document.addEventListener('DOMContentLoaded', () => {
             padPosicion: document.getElementById('pad-posicion'),
             padMedidas: document.getElementById('pad-medidas'), 
             padImagenes: document.getElementById('pad-imagenes'),
+            imagePreviewContainer: document.getElementById('image-preview-container'),
             appForm: document.getElementById('app-form'),
             editingAppIndexInput: document.getElementById('editing-app-index'),
             appMarca: document.getElementById('app-marca'),
@@ -48,7 +61,8 @@ document.addEventListener('DOMContentLoaded', () => {
             cancelEditAppBtn: document.getElementById('cancel-edit-app-btn'),
             currentAppsList: document.getElementById('current-apps-list'),
             savePadBtn: document.getElementById('save-pad-btn'),
-            deletePadBtn: document.getElementById('delete-pad-btn'), // Botón de eliminar
+            deletePadBtn: document.getElementById('delete-pad-btn'),
+            duplicatePadBtn: document.getElementById('duplicate-pad-btn'), 
             jsonOutput: document.getElementById('json-output'),
             generateDownloadBtn: document.getElementById('generate-download-btn'),
             downloadStatus: document.getElementById('download-status'),
@@ -66,17 +80,19 @@ document.addEventListener('DOMContentLoaded', () => {
             confirmModalBtnYes: document.getElementById('confirm-modal-btn-yes'),
             confirmModalBtnNo: document.getElementById('confirm-modal-btn-no'),
             exportExcelBtn: document.getElementById('export-excel-btn'),
+            marcasList: document.getElementById('marcas-list'), // <-- AÑADIDO
+            seriesList: document.getElementById('series-list') // <-- AÑADIDO
         };
         
         // Verificación de elementos esenciales
-        if (!els.pageTitle || !els.navItems || !els.contentSections || !els.padRef || !els.confirmModalOverlay || !els.exportExcelBtn || !els.deletePadBtn) {
-             throw new Error("Elementos esenciales del layout o formulario no encontrados (page-title, pad-ref, confirm-modal, export-excel-btn, delete-pad-btn).");
+        if (!els.pageTitle || !els.searchType || !els.deletePadBtn || !els.duplicatePadBtn || !els.imagePreviewContainer || !els.marcasList) {
+             throw new Error("Elementos esenciales del layout o formulario no encontrados (page-title, search-type, delete-pad-btn, duplicate-pad-btn, image-preview-container, marcas-list, etc).");
         }
         console.log("DOM elements obtained successfully.");
     } catch (error) {
         console.error("Error obtaining DOM elements:", error);
         console.error("Error crítico: No se encontraron elementos HTML necesarios. Revisa IDs.");
-        return; // Detener ejecución si faltan elementos
+        return; 
     }
 
     // ----- FUNCIONES -----
@@ -128,6 +144,95 @@ document.addEventListener('DOMContentLoaded', () => {
             setActiveSection('dashboard');
         }
     };
+    
+    // --- FUNCIÓN 3: PREVISUALIZACIÓN DE IMÁGENES ---
+    const renderImagePreview = () => {
+        if (!els.imagePreviewContainer || !els.padImagenes) return;
+        const imageUrls = els.padImagenes.value.split(',').map(url => url.trim()).filter(Boolean);
+        els.imagePreviewContainer.innerHTML = ''; 
+        if (imageUrls.length === 0) return;
+        imageUrls.forEach(url => {
+            const wrapper = document.createElement('div');
+            wrapper.className = 'preview-image-wrapper';
+            const img = document.createElement('img');
+            img.src = url;
+            img.alt = 'Previsualización';
+            img.onerror = () => {
+                img.style.display = 'none';
+                const errorIcon = document.createElement('span');
+                errorIcon.className = 'material-icons-outlined error-icon';
+                errorIcon.textContent = 'broken_image';
+                wrapper.appendChild(errorIcon);
+            };
+            wrapper.appendChild(img);
+            els.imagePreviewContainer.appendChild(wrapper);
+        });
+    };
+    
+    // --- ▼▼▼ FUNCIÓN 2: VALIDACIÓN DE CAMPOS ▼▼▼ ---
+    const validateField = (element, regex) => {
+        if (!element) return false;
+        const value = element.value.trim();
+        
+        if (value === "") { // Campo vacío es válido (opcional)
+            element.classList.remove('is-valid', 'is-invalid');
+            return true;
+        }
+        
+        if (regex.test(value)) {
+            element.classList.add('is-valid');
+            element.classList.remove('is-invalid');
+            return true;
+        } else {
+            element.classList.add('is-invalid');
+            element.classList.remove('is-valid');
+            return false;
+        }
+    };
+    // --- ▲▲▲ FIN FUNCIÓN 2 ▲▲▲ ---
+
+    // --- ▼▼▼ FUNCIÓN 1: AUTOCOMPLETADO ▼▼▼ ---
+    const generateAutocompleteData = (pads) => {
+        autocompleteData = {};
+        if (!Array.isArray(pads)) return;
+        
+        for (const pad of pads) {
+            if (Array.isArray(pad.aplicaciones)) {
+                for (const app of pad.aplicaciones) {
+                    const marca = (app.marca || "").trim();
+                    const serie = (app.serie || "").trim();
+                    
+                    if (marca) {
+                        if (!autocompleteData[marca]) {
+                            autocompleteData[marca] = new Set();
+                        }
+                        if (serie) {
+                            autocompleteData[marca].add(serie);
+                        }
+                    }
+                }
+            }
+        }
+    };
+
+    const updateMarcaDatalist = () => {
+        if (!els.marcasList) return;
+        const marcas = Object.keys(autocompleteData).sort();
+        els.marcasList.innerHTML = marcas.map(marca => `<option value="${marca}"></option>`).join('');
+    };
+
+    const updateSerieDatalist = (selectedMarca) => {
+        if (!els.seriesList) return;
+        els.seriesList.innerHTML = ''; // Limpiar siempre
+        
+        const marcaData = autocompleteData[selectedMarca];
+        if (marcaData && marcaData.size > 0) {
+            const series = Array.from(marcaData).sort();
+            els.seriesList.innerHTML = series.map(serie => `<option value="${serie}"></option>`).join('');
+        }
+    };
+    // --- ▲▲▲ FIN FUNCIÓN 1 ▲▲▲ ---
+
 
     // Resets de Formularios
     const resetAppForm = () => {
@@ -141,6 +246,10 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         if (els.cancelEditAppBtn) els.cancelEditAppBtn.style.display = 'none';
         if (els.appFormDescription) els.appFormDescription.textContent = "Añade vehículos compatibles.";
+        
+        // Limpiar validación y datalist
+        if (els.appAnio) els.appAnio.classList.remove('is-valid', 'is-invalid');
+        if (els.seriesList) els.seriesList.innerHTML = '';
     };
 
     const resetFormsAndMode = () => {
@@ -151,13 +260,18 @@ document.addEventListener('DOMContentLoaded', () => {
         if (els.formModeTitle) els.formModeTitle.textContent = "Añadir Nueva Pastilla";
         if (els.saveButtonText) els.saveButtonText.textContent = "Guardar Pastilla";
         if (els.savePadBtn) {
-            els.savePadBtn.classList.remove('btn-secondary');
+            els.savePadBtn.classList.remove('btn-danger', 'btn-secondary');
             els.savePadBtn.classList.add('btn-primary');
         }
-        if (els.deletePadBtn) els.deletePadBtn.style.display = 'none'; // Ocultar botón eliminar
+        if (els.deletePadBtn) els.deletePadBtn.style.display = 'none'; 
+        if (els.duplicatePadBtn) els.duplicatePadBtn.style.display = 'none'; 
         if (els.searchRef) els.searchRef.value = '';
         if (els.searchResults) els.searchResults.innerHTML = '';
         if (els.clearSearchBtn) els.clearSearchBtn.style.display = 'none';
+        
+        if (els.imagePreviewContainer) els.imagePreviewContainer.innerHTML = ''; 
+        if (els.padMedidas) els.padMedidas.classList.remove('is-valid', 'is-invalid');
+
         resetAppForm();
         renderCurrentApps();
     };
@@ -273,6 +387,10 @@ document.addEventListener('DOMContentLoaded', () => {
         if (els.appLitros) els.appLitros.value = app.litros || '';
         if (els.appAnio) els.appAnio.value = app.año || '';
         if (els.appEspec) els.appEspec.value = app.especificacion || '';
+        
+        validateField(els.appAnio, anioRegex); // <-- Validar campo
+        updateSerieDatalist(app.marca || ""); // <-- Poblar series
+
         if (els.addAppButtonText) els.addAppButtonText.textContent = "Actualizar App";
         if (els.addUpdateAppBtn) {
              els.addUpdateAppBtn.classList.remove('btn-tertiary');
@@ -292,7 +410,6 @@ document.addEventListener('DOMContentLoaded', () => {
         if (els.padFmsi) els.padFmsi.value = (Array.isArray(padData.fmsi) ? padData.fmsi : []).join(', ');
         if (els.padPosicion) els.padPosicion.value = padData.posición || 'Delantera';
         
-        // Cargar Medidas (Compatible con String y Array)
         if (els.padMedidas) {
             if (typeof padData.medidas === 'string') {
                 els.padMedidas.value = padData.medidas || '';
@@ -302,17 +419,21 @@ document.addEventListener('DOMContentLoaded', () => {
                 els.padMedidas.value = '';
             }
         }
+        validateField(els.padMedidas, medidasRegex); // <-- Validar campo
 
         if (els.padImagenes) els.padImagenes.value = (Array.isArray(padData.imagenes) ? padData.imagenes : []).join(', ');
+        renderImagePreview(); 
+        
         currentApps = Array.isArray(padData.aplicaciones) ? JSON.parse(JSON.stringify(padData.aplicaciones)) : [];
         const firstRefId = (Array.isArray(padData.ref) && padData.ref.length > 0) ? padData.ref[0] : '';
         if (els.formModeTitle) els.formModeTitle.textContent = `Editando Pastilla: ${firstRefId}`;
         if (els.saveButtonText) els.saveButtonText.textContent = "Actualizar Pastilla";
         if (els.savePadBtn) {
-            els.savePadBtn.classList.remove('btn-primary');
+            els.savePadBtn.classList.remove('btn-danger', 'btn-secondary');
             els.savePadBtn.classList.add('btn-primary');
         }
-        if (els.deletePadBtn) els.deletePadBtn.style.display = 'inline-flex'; // Mostrar botón eliminar
+        if (els.deletePadBtn) els.deletePadBtn.style.display = 'inline-flex'; 
+        if (els.duplicatePadBtn) els.duplicatePadBtn.style.display = 'inline-flex'; 
         if (els.clearSearchBtn) els.clearSearchBtn.style.display = 'inline-flex';
         if (els.searchResults) els.searchResults.innerHTML = '';
         renderCurrentApps();
@@ -497,7 +618,6 @@ document.addEventListener('DOMContentLoaded', () => {
             const oemString = (pad.oem || []).join(', ');
             const fmsiString = (pad.fmsi || []).join(', ');
             const imagenesString = (pad.imagenes || []).join(', ');
-            // Exportar Medidas (Compatible con String y Array)
             const medidasString = (Array.isArray(pad.medidas) ? pad.medidas.join(', ') : (pad.medidas || ''));
 
             if (pad.aplicaciones && pad.aplicaciones.length > 0) {
@@ -555,7 +675,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
     // ----- EVENT LISTENERS -----
-    // (Añadidos en un try...catch por si falla la búsqueda de elementos)
     try {
         console.log("Adding event listeners...");
 
@@ -605,6 +724,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
                 
                 masterPadList = data;
+                generateAutocompleteData(masterPadList); // <-- AÑADIDO
+                updateMarcaDatalist(); // <-- AÑADIDO
+                
                 updateDashboardStats();
                 showStatus(els.importStatus, `¡Éxito! ${masterPadList.length} pastillas cargadas desde ${file.name}.`, false);
                 resetFormsAndMode();
@@ -614,20 +736,42 @@ document.addEventListener('DOMContentLoaded', () => {
                 console.error("Error al procesar archivo:", err);
                 showStatus(els.importStatus, `Error: ${err.message}`, true);
                 masterPadList = [];
+                generateAutocompleteData([]); // <-- Limpiar autocompletado en error
+                updateMarcaDatalist(); // <-- Limpiar autocompletado en error
                 updateDashboardStats();
                 if (els.fileName) els.fileName.textContent = file.name + " (Error)";
                 if (els.jsonOutput) els.jsonOutput.value = '';
             } finally {
-                if (e.target) e.target.value = null; // Resetear input
+                if (e.target) e.target.value = null; 
             }
         });
 
-        // Búsqueda
+        // --- BÚSQUEDA ---
+        const updateSearchPlaceholder = () => {
+            if (!els.searchType || !els.searchRef) return;
+            const type = els.searchType.value;
+            switch(type) {
+                case 'ref':
+                    els.searchRef.placeholder = "Ej: 7104INC";
+                    break;
+                case 'fmsi':
+                    els.searchRef.placeholder = "Ej: D1047";
+                    break;
+                case 'oem':
+                    els.searchRef.placeholder = "Ej: 123456789";
+                    break;
+                case 'app':
+                    els.searchRef.placeholder = "Ej: Chevrolet Spark";
+                    break;
+            }
+        };
+
         const performSearch = () => {
             const query = els.searchRef.value.trim().toLowerCase();
+            const searchType = els.searchType.value;
 
-            if (query.length < 1) { 
-                els.searchResults.innerHTML = '<div class="search-feedback error">Escribe al menos 1 carácter.</div>';
+            if (query.length < 2) { 
+                els.searchResults.innerHTML = '<div class="search-feedback error">Escribe al menos 2 caracteres.</div>';
                 if (query.length === 0) els.searchResults.innerHTML = '';
                 return;
             }
@@ -637,11 +781,32 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             const results = masterPadList.reduce((acc, pad, index) => {
-                if (Array.isArray(pad?.ref)) {
-                     const foundRefString = pad.ref.find(r => typeof r === 'string' && r.toLowerCase().includes(query));
-                     if (foundRefString) {
-                         acc.push({ pad, index, foundRef: foundRefString });
-                     }
+                let foundMatch = null;
+                try {
+                    switch(searchType) {
+                        case 'ref':
+                            foundMatch = (pad.ref || []).find(r => r.toLowerCase().includes(query));
+                            break;
+                        case 'fmsi':
+                            foundMatch = (pad.fmsi || []).find(f => f.toLowerCase().includes(query));
+                            break;
+                        case 'oem':
+                            foundMatch = (pad.oem || []).find(o => o.toLowerCase().includes(query));
+                            break;
+                        case 'app':
+                            const foundApp = (pad.aplicaciones || []).find(app => 
+                                (app.marca && app.marca.toLowerCase().includes(query)) || 
+                                (app.serie && app.serie.toLowerCase().includes(query))
+                            );
+                            if (foundApp) {
+                                foundMatch = `${foundApp.marca} ${foundApp.serie}`;
+                            }
+                            break;
+                    }
+                } catch (e) { console.error("Error buscando en pastilla:", e, pad); }
+
+                 if (foundMatch) {
+                     acc.push({ pad, index, foundText: foundMatch });
                  }
                  return acc;
             }, []); 
@@ -652,16 +817,18 @@ document.addEventListener('DOMContentLoaded', () => {
                 els.searchResults.innerHTML = results.map(r => `
                     <div class="search-result-item">
                         <div>
-                            <span class="search-result-ref">${r.foundRef}</span>
-                            <span class="search-result-apps">(${(Array.isArray(r.pad?.aplicaciones) ? r.pad.aplicaciones.length : 0)} apps)</span>
+                            <span class="search-result-match">${r.foundText}</span>
+                            <span class="search-result-context">(${searchType.toUpperCase()} / ${r.pad.ref[0] || 'N/A'})</span>
                         </div>
                         <button type="button" class="btn btn-secondary edit-btn" data-index="${r.index}">Cargar</button>
                     </div>
                 `).join('');
             }
         };
+        
         els.searchBtn.addEventListener('click', performSearch);
-        let searchTimeout;
+        els.searchType.addEventListener('change', updateSearchPlaceholder); 
+        
         els.searchRef.addEventListener('input', () => {
             clearTimeout(searchTimeout);
             searchTimeout = setTimeout(performSearch, 300);
@@ -669,6 +836,8 @@ document.addEventListener('DOMContentLoaded', () => {
         els.searchRef.addEventListener('keypress', (e) => {
             if (e.key === 'Enter') { e.preventDefault(); clearTimeout(searchTimeout); performSearch(); }
         });
+        // --- FIN BÚSQUEDA ---
+
 
         // Clic Cargar Resultados
         els.searchResults.addEventListener('click', (e) => {
@@ -690,6 +859,15 @@ document.addEventListener('DOMContentLoaded', () => {
         // Form App Submit
         els.appForm.addEventListener('submit', (e) => {
             e.preventDefault();
+            
+            // --- Validar campos antes de guardar ---
+            const isAnioValid = validateField(els.appAnio, anioRegex);
+            if (!isAnioValid) {
+                 showStatus(els.savePadStatus, "El formato del Año de la aplicación es incorrecto.", true, 3000);
+                 els.appAnio.focus();
+                 return;
+            }
+
             const app = {
                 marca: els.appMarca.value.trim(),
                 serie: els.appSerie.value.trim(),
@@ -736,7 +914,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     renderCurrentApps();
                     if (editingAppIndex === index) resetAppForm();
                     else if (editingAppIndex > index) {
-                        editingAppIndex--; // Ajustar índice si se borra uno anterior
+                        editingAppIndex--; 
                         if (els.editingAppIndexInput) els.editingAppIndexInput.value = editingAppIndex;
                     }
                 }
@@ -745,6 +923,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Guardar/Actualizar Pastilla
         els.savePadBtn.addEventListener('click', () => {
+            // --- Validar campos antes de guardar ---
+            const isMedidasValid = validateField(els.padMedidas, medidasRegex);
+            if (!isMedidasValid) {
+                 showStatus(els.savePadStatus, "El formato de Medidas es incorrecto. Debe ser '100 x 50' o '100 x 50, 110 x 60'.", true, 5000);
+                 els.padMedidas.focus();
+                 return;
+            }
+
             const refsValue = els.padRef.value || '';
             const refsArray = refsValue.split(',').map(s => s.trim()).filter(Boolean);
 
@@ -754,14 +940,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
             
-            showStatus(els.savePadStatus, "", false, 1); // Limpiar status
+            showStatus(els.savePadStatus, "", false, 1); 
 
             const newPad = {
                 ref: refsArray,
                 oem: (els.padOem?.value || '').split(',').map(s => s.trim()).filter(Boolean),
                 fmsi: (els.padFmsi?.value || '').split(',').map(s => s.trim()).filter(Boolean),
                 posición: els.padPosicion?.value || 'Delantera',
-                // Guardar Medidas (Nuevo Formato Array)
                 medidas: (els.padMedidas?.value || '').split(',').map(s => s.trim()).filter(Boolean),
                 imagenes: (els.padImagenes?.value || '').split(',').map(s => s.trim()).filter(Boolean),
                 aplicaciones: Array.isArray(currentApps) ? currentApps : [],
@@ -771,18 +956,21 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!Array.isArray(masterPadList)) masterPadList = [];
 
             if (editIndex > -1 && editIndex < masterPadList.length) {
-                // Modo Edición
                 masterPadList[editIndex] = newPad;
                 message = `¡Pastilla "${refsArray[0]}" actualizada!`;
             } else {
-                // Modo Añadir Nuevo
                 masterPadList.push(newPad);
                 message = `¡Pastilla "${refsArray[0]}" guardada!`;
             }
+            
+            // Regenerar autocompletado por si se añadió una nueva marca/serie
+            generateAutocompleteData(masterPadList);
+            updateMarcaDatalist();
+
             updateDashboardStats();
             resetFormsAndMode();
             setActiveSection('dashboard');
-            showStatus(els.importStatus, message, false); // Mostrar feedback en el dashboard
+            showStatus(els.importStatus, message, false); 
         });
         
         // --- LISTENER: ELIMINAR PASTILLA ---
@@ -799,7 +987,12 @@ document.addEventListener('DOMContentLoaded', () => {
             const confirmed = await showCustomConfirm(message, "Eliminar Pastilla", "Sí, Eliminar", "btn-danger");
             
             if (confirmed) {
-                masterPadList.splice(editIndex, 1); // Eliminar del array
+                masterPadList.splice(editIndex, 1); 
+                
+                // Regenerar autocompletado por si se eliminó la última marca/serie
+                generateAutocompleteData(masterPadList);
+                updateMarcaDatalist();
+
                 showStatus(els.importStatus, `Pastilla "${refId}" eliminada.`, false);
                 updateDashboardStats();
                 resetFormsAndMode();
@@ -807,10 +1000,57 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
 
+        // --- LISTENER: DUPLICAR PASTILLA ---
+        els.duplicatePadBtn.addEventListener('click', () => {
+            if (editIndex < 0) { 
+                showStatus(els.savePadStatus, "Carga una pastilla primero para duplicarla.", true);
+                return;
+            }
+            
+            editIndex = -1;
+            if (els.editIndexInput) els.editIndexInput.value = "-1";
+            
+            const firstRefId = els.padRef.value.split(',')[0].trim() || 'pastilla';
+            if (els.formModeTitle) els.formModeTitle.textContent = `Duplicando: ${firstRefId}`;
+            if (els.saveButtonText) els.saveButtonText.textContent = "Guardar como Nueva";
+            
+            if (els.deletePadBtn) els.deletePadBtn.style.display = 'none';
+            if (els.duplicatePadBtn) els.duplicatePadBtn.style.display = 'none';
+
+             if (els.savePadBtn) {
+                els.savePadBtn.classList.remove('btn-danger', 'btn-secondary');
+                els.savePadBtn.classList.add('btn-primary');
+            }
+            
+            if (els.padRef) els.padRef.focus();
+            showStatus(els.savePadStatus, "Modo 'Duplicar' activado. Cambia la 'Ref' y guarda.", false, 6000);
+        });
+
+        // --- LISTENER: PREVISUALIZACIÓN DE IMÁGENES ---
+        if (els.padImagenes) {
+            els.padImagenes.addEventListener('input', () => {
+                clearTimeout(imagePreviewTimeout);
+                imagePreviewTimeout = setTimeout(renderImagePreview, 300); // 300ms debounce
+            });
+        }
+        
+        // --- ▼▼▼ LISTENERS PARA VALIDACIÓN Y AUTOCOMPLETADO ▼▼▼ ---
+        if(els.appMarca) {
+            els.appMarca.addEventListener('input', () => updateSerieDatalist(els.appMarca.value.trim()));
+        }
+        if(els.appAnio) {
+            els.appAnio.addEventListener('input', () => validateField(els.appAnio, anioRegex));
+        }
+        if(els.padMedidas) {
+            els.padMedidas.addEventListener('input', () => validateField(els.padMedidas, medidasRegex));
+        }
+        // --- ▲▲▲ FIN LISTENERS ▲▲▲ ---
+
+
         // Generar y Descargar JSON
         els.generateDownloadBtn.addEventListener('click', () => {
             const jsonString = generateJsonString();
-            displayFormattedJson(jsonString); // Mostrar en <textarea>
+            displayFormattedJson(jsonString); 
 
             if (!Array.isArray(masterPadList) || masterPadList.length === 0) {
                 showStatus(els.downloadStatus, "No hay datos cargados para generar.", true);
@@ -857,6 +1097,8 @@ document.addEventListener('DOMContentLoaded', () => {
             const confirmed = await showCustomConfirm(message, "Limpiar Sesión", "Sí, Limpiar Todo", "btn-danger");
             if (confirmed) {
                 masterPadList = [];
+                generateAutocompleteData([]); // <-- Limpiar
+                updateMarcaDatalist(); // <-- Limpiar
                 resetFormsAndMode();
                 updateDashboardStats();
                 if (els.jsonOutput) els.jsonOutput.value = '';
@@ -918,6 +1160,7 @@ document.addEventListener('DOMContentLoaded', () => {
     try {
         setActiveSection('dashboard');
         updateDashboardStats();
+        updateSearchPlaceholder(); 
         console.log("Admin panel UI inicializado.");
     } catch (error) {
         console.error("Error al inicializar UI:", error);
