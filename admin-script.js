@@ -1,4 +1,4 @@
-Document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', () => {
     console.log("Admin script loaded. DOM ready.");
 
     // ----- VARIABLES GLOBALES -----
@@ -34,7 +34,7 @@ Document.addEventListener('DOMContentLoaded', () => {
             padOem: document.getElementById('pad-oem'),
             padFmsi: document.getElementById('pad-fmsi'),
             padPosicion: document.getElementById('pad-posicion'),
-            padMedidas: document.getElementById('pad-medidas'), 
+            padMedidas: document.getElementById('pad-medidas'),
             padImagenes: document.getElementById('pad-imagenes'),
             appForm: document.getElementById('app-form'),
             editingAppIndexInput: document.getElementById('editing-app-index'),
@@ -48,9 +48,6 @@ Document.addEventListener('DOMContentLoaded', () => {
             cancelEditAppBtn: document.getElementById('cancel-edit-app-btn'),
             currentAppsList: document.getElementById('current-apps-list'),
             savePadBtn: document.getElementById('save-pad-btn'),
-            // --- NUEVO BOTÓN AÑADIDO ---
-            deletePadBtn: document.getElementById('delete-pad-btn'), 
-            // ---
             jsonOutput: document.getElementById('json-output'),
             generateDownloadBtn: document.getElementById('generate-download-btn'),
             downloadStatus: document.getElementById('download-status'),
@@ -70,9 +67,8 @@ Document.addEventListener('DOMContentLoaded', () => {
             exportExcelBtn: document.getElementById('export-excel-btn'),
         };
         
-        // --- VERIFICACIÓN ACTUALIZADA ---
-        if (!els.pageTitle || !els.navItems || !els.contentSections || !els.padRef || !els.confirmModalOverlay || !els.exportExcelBtn || !els.deletePadBtn) {
-             throw new Error("Elementos esenciales del layout o formulario no encontrados (page-title, pad-ref, confirm-modal, export-excel-btn, delete-pad-btn).");
+        if (!els.pageTitle || !els.navItems || !els.contentSections || !els.padRef || !els.confirmModalOverlay || !els.exportExcelBtn) {
+             throw new Error("Elementos esenciales del layout o formulario no encontrados.");
         }
         console.log("DOM elements obtained successfully.");
     } catch (error) {
@@ -153,9 +149,6 @@ Document.addEventListener('DOMContentLoaded', () => {
             els.savePadBtn.classList.remove('btn-secondary');
             els.savePadBtn.classList.add('btn-primary');
         }
-        // --- MODIFICACIÓN: Ocultar botón de eliminar ---
-        if (els.deletePadBtn) els.deletePadBtn.style.display = 'none';
-        // ---
         if (els.searchRef) els.searchRef.value = '';
         if (els.searchResults) els.searchResults.innerHTML = '';
         if (els.clearSearchBtn) els.clearSearchBtn.style.display = 'none';
@@ -287,17 +280,7 @@ Document.addEventListener('DOMContentLoaded', () => {
         if (els.padOem) els.padOem.value = (Array.isArray(padData.oem) ? padData.oem : []).join(', ');
         if (els.padFmsi) els.padFmsi.value = (Array.isArray(padData.fmsi) ? padData.fmsi : []).join(', ');
         if (els.padPosicion) els.padPosicion.value = padData.posición || 'Delantera';
-        
-        if (els.padMedidas) {
-            if (typeof padData.medidas === 'string') {
-                els.padMedidas.value = padData.medidas || '';
-            } else if (Array.isArray(padData.medidas)) {
-                els.padMedidas.value = padData.medidas.join(', ');
-            } else {
-                els.padMedidas.value = '';
-            }
-        }
-
+        if (els.padMedidas) els.padMedidas.value = padData.medidas || '';
         if (els.padImagenes) els.padImagenes.value = (Array.isArray(padData.imagenes) ? padData.imagenes : []).join(', ');
         currentApps = Array.isArray(padData.aplicaciones) ? JSON.parse(JSON.stringify(padData.aplicaciones)) : [];
         const firstRefId = (Array.isArray(padData.ref) && padData.ref.length > 0) ? padData.ref[0] : '';
@@ -307,9 +290,6 @@ Document.addEventListener('DOMContentLoaded', () => {
             els.savePadBtn.classList.remove('btn-primary');
             els.savePadBtn.classList.add('btn-primary');
         }
-        // --- MODIFICACIÓN: Mostrar botón de eliminar ---
-        if (els.deletePadBtn) els.deletePadBtn.style.display = 'inline-flex';
-        // ---
         if (els.clearSearchBtn) els.clearSearchBtn.style.display = 'inline-flex';
         if (els.searchResults) els.searchResults.innerHTML = '';
         renderCurrentApps();
@@ -338,6 +318,11 @@ Document.addEventListener('DOMContentLoaded', () => {
     };
     
     
+    // --- FUNCIÓN PROCESAR EXCEL (CORREGIDA) ---
+    /**
+     * @param {File} file - El archivo .xlsx
+     * @returns {Promise<Array>} - Una promesa que resuelve con el masterPadList
+     */
     const processExcelFile = (file) => {
         return new Promise((resolve, reject) => {
             if (typeof XLSX === 'undefined') {
@@ -360,47 +345,54 @@ Document.addEventListener('DOMContentLoaded', () => {
                     const headers = jsonData[0].map(h => String(h).trim());
                     const rows = jsonData.slice(1);
                     
+                    // --- ¡CORREGIDO! Nombres de columna que coinciden con la imagen image_826955.png ---
                     const colMap = {
-                        ref: headers.indexOf('ref'),
-                        fmsi: headers.indexOf('fmsi'),
-                        posicion: headers.indexOf('posición'),
-                        marca: headers.indexOf('marca'),
-                        serie: headers.indexOf('serie'),
-                        anio: headers.indexOf('año'),
-                        litros: headers.indexOf('litros'),
-                        espec: headers.indexOf('especificacion')
+                        ref: headers.indexOf('ref'),            // minúscula
+                        fmsi: headers.indexOf('fmsi'),          // minúscula
+                        posicion: headers.indexOf('posición'),  // minúscula con tilde
+                        marca: headers.indexOf('marca'),        // minúscula
+                        serie: headers.indexOf('serie'),        // minúscula
+                        anio: headers.indexOf('año'),           // minúscula con tilde
+                        litros: headers.indexOf('litros'),      // minúscula
+                        espec: headers.indexOf('especificacion') // minúscula
                     };
 
+                    // Verificar que las columnas esenciales existan
                     if (colMap.ref === -1 || colMap.marca === -1 || colMap.serie === -1 || colMap.anio === -1) {
                         console.error("Columnas detectadas:", headers);
+                        // Mensaje de error actualizado
                         throw new Error("El Excel no tiene las columnas requeridas. Se necesita: 'ref', 'marca', 'serie', 'año'.");
                     }
+                    // --- FIN DE LA CORRECCIÓN ---
+
 
                     console.log(`✅ Leídas ${rows.length} filas desde Excel. Procesando...`);
                     
                     const pads_agrupadas = {};
 
+                    // Función para capitalizar
                     const toTitleCase = (str) => {
                         if (!str) return "";
                         return str.toLowerCase().replace(/\b\w/g, char => char.toUpperCase());
                     };
 
+                    // Función para formatear años
                     const formatYearJS = (anio_str) => {
                         if (!anio_str) return "";
                         const partes = anio_str.split('-');
                         const partes_procesadas = partes.map(parte => {
                             const parte_limpia = parte.trim();
                             if (parte_limpia.length === 4 && /^(19|20)\d{2}$/.test(parte_limpia)) {
-                                return parte_limpia.substring(2);
+                                return parte_limpia.substring(2); // '1999' -> '99'
                             } else if (parte_limpia.length === 2 && /^\d{2}$/.test(parte_limpia)) {
-                                return parte_limpia;
+                                return parte_limpia; // '99' -> '99'
                             }
                             return parte_limpia;
                         });
                         const aniosUnidos = partes_procesadas.filter(Boolean).join('-');
                         const aniosPartidos = aniosUnidos.split('-');
                         if (aniosPartidos.length === 2 && aniosPartidos[0] === aniosPartidos[1]) {
-                            return aniosPartidos[0];
+                            return aniosPartidos[0]; // Solo '99'
                         }
                         return aniosUnidos;
                     };
@@ -431,18 +423,18 @@ Document.addEventListener('DOMContentLoaded', () => {
                             "marca": marca_app,
                             "serie": serie_app,
                             "litros": String(fila[colMap.litros] || '').trim(),
-                            "año": formatYearJS(String(fila[colMap.anio] || '').trim()),
+                            "año": formatYearJS(String(fila[colMap.anio] || '').trim()), // Año abreviado
                             "especificacion": String(fila[colMap.espec] || '').trim()
                         };
 
                         if (!(ref_id_val in pads_agrupadas)) {
-                            const ref_id_con_inc = `${ref_id_val}INC`;
+                            const ref_id_con_inc = `${ref_id_val}INC`; // Añadir INC
                             pads_agrupadas[ref_id_val] = {
                                 "ref": [ref_id_con_inc],
                                 "oem": [],
                                 "fmsi": [fmsi_val].filter(Boolean),
                                 "posición": posicion_json,
-                                "medidas": [],
+                                "medidas": "", 
                                 "imagenes": [],
                                 "aplicaciones": [aplicacion_actual]
                             };
@@ -452,7 +444,7 @@ Document.addEventListener('DOMContentLoaded', () => {
                                 pads_agrupadas[ref_id_val]["fmsi"].push(fmsi_val);
                             }
                         }
-                    } 
+                    } // Fin del bucle for
 
                     const lista_json_final = Object.values(pads_agrupadas);
                     lista_json_final.sort((a, b) => (a?.ref?.[0] || '').toLowerCase().localeCompare((b?.ref?.[0] || '').toLowerCase(), undefined, { numeric: true }));
@@ -473,6 +465,7 @@ Document.addEventListener('DOMContentLoaded', () => {
         });
     };
     
+    // --- FUNCIÓN EXPORTAR A EXCEL (CORREGIDA) ---
     const exportToExcel = () => {
         if (!Array.isArray(masterPadList) || masterPadList.length === 0) {
             showStatus(els.downloadStatus, "No hay datos para exportar a Excel.", true);
@@ -481,26 +474,27 @@ Document.addEventListener('DOMContentLoaded', () => {
         console.log("Aplanando datos para exportar a Excel...");
         
         const flattenedData = [];
+        // --- ¡CORREGIDO! Encabezados del Excel exportado para que coincidan con la importación ---
         const headers = [
             'ref', 'oem', 'fmsi', 'posición', 'medidas', 'imagenes',
             'marca', 'serie', 'litros', 'año', 'especificacion'
-        ]; 
+        ];
 
         for (const pad of masterPadList) {
             const refString = (pad.ref || []).join(', ');
             const oemString = (pad.oem || []).join(', ');
             const fmsiString = (pad.fmsi || []).join(', ');
             const imagenesString = (pad.imagenes || []).join(', ');
-            const medidasString = (Array.isArray(pad.medidas) ? pad.medidas.join(', ') : (pad.medidas || ''));
 
             if (pad.aplicaciones && pad.aplicaciones.length > 0) {
                 for (const app of pad.aplicaciones) {
+                    // --- ¡CORREGIDO! Usar nombres de clave con minúsculas/tildes ---
                     flattenedData.push({
                         'ref': refString,
                         'oem': oemString,
                         'fmsi': fmsiString,
                         'posición': pad.posición || '',
-                        'medidas': medidasString,
+                        'medidas': pad.medidas || '',
                         'imagenes': imagenesString,
                         'marca': app.marca || '',
                         'serie': app.serie || '',
@@ -515,7 +509,7 @@ Document.addEventListener('DOMContentLoaded', () => {
                     'oem': oemString,
                     'fmsi': fmsiString,
                     'posición': pad.posición || '',
-                    'medidas': medidasString,
+                    'medidas': pad.medidas || '',
                     'imagenes': imagenesString,
                 });
             }
@@ -523,7 +517,7 @@ Document.addEventListener('DOMContentLoaded', () => {
         
         try {
             const ws = XLSX.utils.json_to_sheet(flattenedData, { 
-                header: headers
+                header: headers // Asegurar el orden
             });
             
             ws['!autofilter'] = { ref: XLSX.utils.encode_range(XLSX.utils.decode_range(ws['!ref'])) };
@@ -531,7 +525,7 @@ Document.addEventListener('DOMContentLoaded', () => {
             const colWidths = [
                 {wch: 20}, {wch: 15}, {wch: 15}, {wch: 10}, {wch: 15}, {wch: 20},
                 {wch: 20}, {wch: 25}, {wch: 10}, {wch: 15}, {wch: 25}
-            ]; 
+            ];
             ws['!cols'] = colWidths;
 
             const wb = XLSX.utils.book_new();
@@ -591,7 +585,7 @@ Document.addEventListener('DOMContentLoaded', () => {
 
                     } else if (file.name.endsWith('.xlsx') || file.name.endsWith('.xls')) {
                         showStatus(els.importStatus, "Procesando archivo Excel...", false, 20000);
-                        data = await processExcelFile(file);
+                        data = await processExcelFile(file); // Usar la nueva función JS
                         
                     } else {
                         throw new Error("Tipo de archivo no soportado. Usa .json o .xlsx");
@@ -770,7 +764,7 @@ Document.addEventListener('DOMContentLoaded', () => {
                     oem: (els.padOem?.value || '').split(',').map(s => s.trim()).filter(Boolean),
                     fmsi: (els.padFmsi?.value || '').split(',').map(s => s.trim()).filter(Boolean),
                     posición: els.padPosicion?.value || 'Delantera',
-                    medidas: (els.padMedidas?.value || '').split(',').map(s => s.trim()).filter(Boolean),
+                    medidas: (els.padMedidas?.value || '').trim(),
                     imagenes: (els.padImagenes?.value || '').split(',').map(s => s.trim()).filter(Boolean),
                     aplicaciones: Array.isArray(currentApps) ? currentApps : [],
                 };
@@ -791,31 +785,6 @@ Document.addEventListener('DOMContentLoaded', () => {
                 showStatus(els.importStatus, message, false);
             });
         }
-        
-        // --- ▼▼▼ NUEVO LISTENER: ELIMINAR PASTILLA ▼▼▼ ---
-        if (els.deletePadBtn) {
-            els.deletePadBtn.addEventListener('click', async () => {
-                if (editIndex < 0 || !Array.isArray(masterPadList) || editIndex >= masterPadList.length) {
-                    showStatus(els.savePadStatus, "No hay pastilla válida cargada para eliminar.", true);
-                    return;
-                }
-
-                const padToRemove = masterPadList[editIndex];
-                const refId = (padToRemove?.ref?.[0] || 'esta pastilla');
-                const message = `¿Estás SEGURO de eliminar la pastilla "${refId}"? Esta acción es permanente.`;
-                
-                const confirmed = await showCustomConfirm(message, "Eliminar Pastilla", "Sí, Eliminar", "btn-danger");
-                
-                if (confirmed) {
-                    masterPadList.splice(editIndex, 1);
-                    showStatus(els.importStatus, `Pastilla "${refId}" eliminada.`, false);
-                    updateDashboardStats();
-                    resetFormsAndMode();
-                    setActiveSection('dashboard');
-                }
-            });
-        }
-        // --- ▲▲▲ FIN DE NUEVO LISTENER ▲▲▲ ---
 
         // Generar y Descargar JSON
         if (els.generateDownloadBtn) {
@@ -845,7 +814,7 @@ Document.addEventListener('DOMContentLoaded', () => {
             });
         }
         
-        // EXPORTAR A EXCEL
+        // --- NUEVO LISTENER: EXPORTAR A EXCEL ---
         if (els.exportExcelBtn) {
              els.exportExcelBtn.addEventListener('click', exportToExcel);
         }

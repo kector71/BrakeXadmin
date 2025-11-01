@@ -20,7 +20,7 @@
         <aside class="sidebar">
             <div class="sidebar-header">
                 <span class="material-icons-outlined logo-icon">speed</span>
-                <span class="logo-text">Brake X Admin 1.2.1</span>
+                <span class="logo-text">Brake X Admin 1.1</span>
             </div>
             <nav class="nav-menu">
                 <a href="#" class="nav-item active" data-section="dashboard">
@@ -101,9 +101,7 @@
                             <div class="form-group"> <label for="pad-oem" class="input-label">OEM (separados por coma)</label> <input type="text" id="pad-oem" class="text-input"> </div>
                             <div class="form-group"> <label for="pad-fmsi" class="input-label">FMSI (separados por coma)</label> <input type="text" id="pad-fmsi" class="text-input"> </div>
                             <div class="form-group"> <label for="pad-posicion" class="input-label">Posición</label> <select id="pad-posicion" class="select-input"> <option value="Delantera">Delantera</option> <option value="Trasera">Trasera</option> </select> </div>
-                            
-                            <div class="form-group"> <label for="pad-medidas" class="input-label">Medidas (separadas por coma)</label> <input type="text" id="pad-medidas" class="text-input" placeholder="Ej: 131.5 x 52.5, 100.0 x 40.0"> </div>
-                            
+                            <div class="form-group"> <label for="pad-medidas" class="input-label">Medidas (Ej: Ancho x Alto)</label> <input type="text" id="pad-medidas" class="text-input" placeholder="Ej: 131.5 x 52.5"> </div>
                             <div class="form-group span-2"> <label for="pad-imagenes" class="input-label">URLs Imágenes (separadas por coma)</label> <input type="text" id="pad-imagenes" class="text-input" placeholder="url1.jpg, url2.jpg, ..."> </div>
                         </form>
                     </div>
@@ -128,12 +126,7 @@
                         <span id="save-pad-status" class="status-message" style="margin-bottom: 1rem;"></span>
                         
                         <button id="save-pad-btn" class="btn btn-primary btn-cta" type="button"> <span class="material-icons-outlined">save</span> <span id="save-button-text">Guardar Pastilla</span> </button>
-                        
-                        <button type="button" class="btn btn-danger" id="delete-pad-btn" style="display: none; margin-top: 1rem;">
-                            <span class="material-icons-outlined">delete_forever</span>
-                            <span>Eliminar Pastilla</span>
-                        </button>
-                        </div>
+                    </div>
                 </div>
 
                 <div id="export-data" class="content-section">
@@ -183,6 +176,6 @@
         </div>
     </div>
 
-    <script src="admin-script.js"></script> 
+    <script src="admin-script.js"></script>
 </body>
 </html>
