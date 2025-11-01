@@ -92,6 +92,8 @@ body {
     width: 260px;
     left: 0;
     top: 0;
+    z-index: 1100; /* Z-index alto para estar sobre el overlay */
+    transition: transform 0.3s ease-out; /* Transición para deslizarse */
 }
 .sidebar-header {
     display: flex;
@@ -134,6 +136,7 @@ body {
     grid-column: 2 / 3;
     display: flex;
     flex-direction: column;
+    transition: grid-column 0.3s ease-out; /* Transición para layout */
 }
 .content-header {
     padding: 1.5rem 2rem;
@@ -142,6 +145,18 @@ body {
     position: sticky;
     top: 0;
     z-index: 900;
+    display: flex; /* Añadido para alinear el botón */
+    align-items: center; /* Añadido para alinear el botón */
+    gap: 1rem; /* Espacio entre botón y título */
+}
+#menu-toggle-btn {
+    display: none; /* Oculto en desktop */
+    width: 44px;
+    height: 44px;
+    padding: 0;
+    border: 1px solid var(--border-color);
+    background-color: var(--bg-color-card);
+    color: var(--text-color-primary);
 }
 #page-title { 
     font-size: 1.5rem; 
@@ -262,22 +277,22 @@ body {
     box-shadow: 0 0 0 2px rgba(74, 144, 226, 0.2);
 }
 
-/* --- Estilos de Validación --- */
+/* Estilos de Validación */
 .text-input.is-valid {
-    border-color: #38a169; /* green-500 */
-    background-color: #f0fff4; /* green-50 */
+    border-color: #38a169; 
+    background-color: #f0fff4; 
 }
 .text-input.is-invalid {
-    border-color: #e53e3e; /* red-500 */
-    background-color: #fff5f5; /* red-50 */
+    border-color: #e53e3e; 
+    background-color: #fff5f5; 
 }
 .lp-dark .text-input.is-valid {
-    border-color: #48bb78; /* green-400 */
-    background-color: #2f4538; /* Aprox green-900 */
+    border-color: #48bb78; 
+    background-color: #2f4538; 
 }
 .lp-dark .text-input.is-invalid {
-    border-color: #fc8181; /* red-400 */
-    background-color: #4b3232; /* Aprox red-900 */
+    border-color: #fc8181; 
+    background-color: #4b3232; 
 }
 
 
@@ -432,7 +447,7 @@ body {
     color: var(--btn-danger-bg);
 }
 
-/* --- Lista de Aplicaciones (MODIFICADO) --- */
+/* --- Lista de Aplicaciones --- */
 .list-title {
     font-size: 1rem;
     font-weight: 600;
@@ -445,7 +460,6 @@ body {
     list-style: none; 
     border: 1px solid var(--border-color); 
     border-radius: 8px; 
-    /* Se eliminaron max-height y overflow-y */
 }
 .app-list li {
     display: flex;
@@ -678,15 +692,47 @@ span.ripple {
     opacity: 0.5;
 }
 
+/* --- ▼▼▼ NUEVOS ESTILOS PARA SIDEBAR MÓVIL ▼▼▼ --- */
+#sidebar-overlay {
+    position: fixed;
+    inset: 0;
+    background-color: rgba(0, 0, 0, 0.5);
+    z-index: 1050; /* Debajo del sidebar, sobre el contenido */
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.3s ease-out, visibility 0.3s ease-out;
+}
+.sidebar-open #sidebar-overlay {
+    opacity: 1;
+    visibility: visible;
+}
+/* --- ▲▲▲ FIN NUEVOS ESTILOS ▲▲▲ --- */
+
 
 /* --- Media Queries (Responsive) --- */
 @media (max-width: 1024px) {
     .app-layout { 
         grid-template-columns: 1fr; 
     }
+    
+    /* --- ▼▼▼ ESTILOS SIDEBAR MÓVIL MODIFICADOS ▼▼▼ --- */
     .sidebar { 
-        display: none; 
+        transform: translateX(-100%); /* Oculto fuera de pantalla */
+        box-shadow: var(--shadow-md);
+        border-right: none;
     }
+    .app-layout.sidebar-open .sidebar {
+        transform: translateX(0); /* Mostrar sidebar */
+    }
+    .app-layout.sidebar-closed .sidebar {
+        transform: translateX(-100%); /* Ocultar sidebar */
+    }
+    
+    #menu-toggle-btn {
+        display: grid; /* Mostrar botón hamburguesa */
+    }
+    /* --- ▲▲▲ FIN ESTILOS SIDEBAR MÓVIL ▲▲▲ --- */
+
     .main-content {
         grid-column: 1 / -1; 
     }
