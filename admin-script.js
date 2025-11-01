@@ -21,11 +21,11 @@ document.addEventListener('DOMContentLoaded', () => {
     try {
         console.log("Attempting to obtain DOM elements...");
         els = {
-            // ▼▼▼ NUEVOS ELEMENTOS PARA MENÚ MÓVIL ▼▼▼
+            // Elementos Menú Móvil
             appLayout: document.querySelector('.app-layout'),
             menuToggleBtn: document.getElementById('menu-toggle-btn'),
             sidebarOverlay: document.getElementById('sidebar-overlay'),
-            // ▲▲▲ FIN NUEVOS ELEMENTOS ▲▲▲
+            sidebarCloseBtn: document.getElementById('sidebar-close-btn'), // <-- AÑADIDO
 
             navItems: document.querySelectorAll('.nav-item'),
             contentSections: document.querySelectorAll('.content-section'),
@@ -88,8 +88,8 @@ document.addEventListener('DOMContentLoaded', () => {
         };
         
         // Verificación de elementos esenciales
-        if (!els.appLayout || !els.menuToggleBtn || !els.sidebarOverlay || !els.marcasList) {
-             throw new Error("Elementos esenciales del layout o formulario no encontrados (appLayout, menuToggleBtn, sidebarOverlay, marcas-list, etc).");
+        if (!els.appLayout || !els.menuToggleBtn || !els.sidebarOverlay || !els.sidebarCloseBtn || !els.marcasList) { // <-- MODIFICADO
+             throw new Error("Elementos esenciales del layout o formulario no encontrados (appLayout, menuToggleBtn, sidebarOverlay, sidebarCloseBtn, marcas-list, etc).");
         }
         console.log("DOM elements obtained successfully.");
     } catch (error) {
@@ -100,14 +100,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // ----- FUNCIONES -----
     
-    // --- ▼▼▼ NUEVAS FUNCIONES MENÚ MÓVIL ▼▼▼ ---
+    // Funciones Menú Móvil
     const openSidebar = () => {
         if (els.appLayout) els.appLayout.classList.replace('sidebar-closed', 'sidebar-open');
     };
     const closeSidebar = () => {
         if (els.appLayout) els.appLayout.classList.replace('sidebar-open', 'sidebar-closed');
     };
-    // --- ▲▲▲ FIN NUEVAS FUNCIONES ▲▲▲ ---
 
 
     // Modal de Confirmación
@@ -157,7 +156,7 @@ document.addEventListener('DOMContentLoaded', () => {
             setActiveSection('dashboard');
         }
         
-        closeSidebar(); // <-- AÑADIDO: Cierra el menú al hacer clic en un ítem
+        closeSidebar(); 
     };
     
     // Previsualización de Imágenes
@@ -690,16 +689,10 @@ document.addEventListener('DOMContentLoaded', () => {
     try {
         console.log("Adding event listeners...");
 
-        // --- ▼▼▼ LISTENERS MENÚ MÓVIL ▼▼▼ ---
-        els.menuToggleBtn.addEventListener('click', () => {
-            if (els.appLayout.classList.contains('sidebar-open')) {
-                closeSidebar();
-            } else {
-                openSidebar();
-            }
-        });
-        els.sidebarOverlay.addEventListener('click', closeSidebar);
-        // --- ▲▲▲ FIN LISTENERS MENÚ MÓVIL ▲▲▲ ---
+        // --- Listeners Menú Móvil ---
+        els.menuToggleBtn.addEventListener('click', openSidebar); // ☰ Abre
+        els.sidebarOverlay.addEventListener('click', closeSidebar); // Overlay Cierra
+        els.sidebarCloseBtn.addEventListener('click', closeSidebar); // 'X' Cierra
 
         // Modales
         els.confirmModalBtnYes?.addEventListener('click', () => hideCustomConfirm(true));
@@ -714,6 +707,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 e.preventDefault();
                 const section = item.dataset?.section;
                 if (section) setActiveSection(section);
+                // closeSidebar() es llamado por setActiveSection()
             });
         });
 
@@ -1049,7 +1043,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (els.padImagenes) {
             els.padImagenes.addEventListener('input', () => {
                 clearTimeout(imagePreviewTimeout);
-                imagePreviewTimeout = setTimeout(renderImagePreview, 300); // 300ms debounce
+                imagePreviewTimeout = setTimeout(renderImagePreview, 300); 
             });
         }
         
