@@ -1,15 +1,33 @@
+// Este script debe ser cargado como type="module" en el HTML
+
+// --- Importar herramientas de Firebase (expuestas en 'window' desde el HTML) ---
+const {
+    auth,
+    db,
+    collection,
+    doc,
+    setDoc,
+    deleteDoc,
+    onSnapshot,
+    signInAnonymously,
+    onAuthStateChanged,
+    writeBatch
+} = window.firebaseTools;
+
+
 document.addEventListener('DOMContentLoaded', () => {
-    console.log("Admin script loaded. DOM ready.");
+    console.log("Admin script 2.0 loaded. DOM ready.");
 
     // ----- VARIABLES GLOBALES -----
-    let masterPadList = [];
+    let allPadsCache = []; 
     let currentApps = [];
-    let editIndex = -1;
+    let currentEditingId = null; 
     let editingAppIndex = -1;
     let totalAppsInList = 0;
     let autocompleteData = {}; 
     let imagePreviewTimeout; 
     let searchTimeout; 
+    let migrationFile = null; // <-- Para el archivo de migración
 
     // --- Expresiones Regulares para Validación ---
     const anioRegex = /^(?:(\d{2}|\d{4})(?:-(\d{2}|\d{4}))?)$/;
@@ -25,23 +43,32 @@ document.addEventListener('DOMContentLoaded', () => {
             appLayout: document.querySelector('.app-layout'),
             menuToggleBtn: document.getElementById('menu-toggle-btn'),
             sidebarOverlay: document.getElementById('sidebar-overlay'),
-            sidebarCloseBtn: document.getElementById('sidebar-close-btn'), // <-- AÑADIDO
+            sidebarCloseBtn: document.getElementById('sidebar-close-btn'), 
 
             navItems: document.querySelectorAll('.nav-item'),
             contentSections: document.querySelectorAll('.content-section'),
             pageTitle: document.getElementById('page-title'),
             padCountDashboard: document.getElementById('pad-count-dashboard'),
             appsTotalDashboard: document.getElementById('apps-total-dashboard'),
-            fileImport: document.getElementById('file-import'),
-            fileName: document.getElementById('file-name'),
-            importStatus: document.getElementById('import-status'),
+            
+            // --- Nuevos elementos de Conexión ---
+            connectionStatus: document.getElementById('connection-status'),
+            connectionStatusText: document.getElementById('connection-status-text'),
+
+            // --- ▼▼▼ NUEVOS ELEMENTOS DE MIGRACIÓN ▼▼▼ ---
+            migrationFileInput: document.getElementById('migration-file-input'),
+            migrationFileName: document.getElementById('migration-file-name'),
+            migrationUploadBtn: document.getElementById('migration-upload-btn'),
+            migrationStatus: document.getElementById('migration-status'),
+            // --- ▲▲▲ FIN ELEMENTOS DE MIGRACIÓN ▲▲▲ ---
+
             searchRef: document.getElementById('search-ref'),
             searchType: document.getElementById('search-type'), 
             searchBtn: document.getElementById('search-btn'),
             searchResults: document.getElementById('search-results'),
             clearSearchBtn: document.getElementById('clear-search-btn'),
             formModeTitle: document.getElementById('form-mode-title'),
-            editIndexInput: document.getElementById('edit-index'),
+            editIndexInput: document.getElementById('edit-index'), 
             saveButtonText: document.getElementById('save-button-text'),
             appFormDescription: document.getElementById('app-form-description'),
             padFormMain: document.getElementById('pad-form-main'),
@@ -66,15 +93,6 @@ document.addEventListener('DOMContentLoaded', () => {
             savePadBtn: document.getElementById('save-pad-btn'),
             deletePadBtn: document.getElementById('delete-pad-btn'),
             duplicatePadBtn: document.getElementById('duplicate-pad-btn'), 
-            jsonOutput: document.getElementById('json-output'),
-            generateDownloadBtn: document.getElementById('generate-download-btn'),
-            downloadStatus: document.getElementById('download-status'),
-            copyJsonBtn: document.getElementById('copy-json-btn'),
-            copyStatus: document.getElementById('copy-status'),
-            clearAllBtn: document.getElementById('clear-all-btn'),
-            darkBtn: document.getElementById('darkBtn'),
-            sunIcon: document.querySelector('.lp-icon-sun'),
-            moonIcon: document.querySelector('.lp-icon-moon'),
             savePadStatus: document.getElementById('save-pad-status'),
             confirmModalOverlay: document.getElementById('confirm-modal-overlay'),
             confirmModalContent: document.getElementById('confirm-modal-content'),
@@ -82,14 +100,12 @@ document.addEventListener('DOMContentLoaded', () => {
             confirmModalMessage: document.getElementById('confirm-modal-message'),
             confirmModalBtnYes: document.getElementById('confirm-modal-btn-yes'),
             confirmModalBtnNo: document.getElementById('confirm-modal-btn-no'),
-            exportExcelBtn: document.getElementById('export-excel-btn'),
             marcasList: document.getElementById('marcas-list'), 
             seriesList: document.getElementById('series-list') 
         };
         
-        // Verificación de elementos esenciales
-        if (!els.appLayout || !els.menuToggleBtn || !els.sidebarOverlay || !els.sidebarCloseBtn || !els.marcasList) { // <-- MODIFICADO
-             throw new Error("Elementos esenciales del layout o formulario no encontrados (appLayout, menuToggleBtn, sidebarOverlay, sidebarCloseBtn, marcas-list, etc).");
+        if (!els.appLayout || !els.menuToggleBtn || !els.sidebarOverlay || !els.sidebarCloseBtn || !els.marcasList || !els.connectionStatus || !els.migrationUploadBtn) {
+             throw new Error("Elementos esenciales del layout o formulario no encontrados (appLayout, menuToggleBtn, migrationUploadBtn, etc).");
         }
         console.log("DOM elements obtained successfully.");
     } catch (error) {
@@ -100,7 +116,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // ----- FUNCIONES -----
     
-    // Funciones Menú Móvil
+    // --- Funciones Menú Móvil ---
     const openSidebar = () => {
         if (els.appLayout) els.appLayout.classList.replace('sidebar-closed', 'sidebar-open');
     };
@@ -109,7 +125,7 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
 
-    // Modal de Confirmación
+    // --- Modal de Confirmación ---
     let confirmResolve = null;
     const showCustomConfirm = (message, title = "Confirmar Acción", confirmText = "Confirmar", confirmClass = "btn-danger") => {
         if (!els.confirmModalOverlay || !els.confirmModalTitle || !els.confirmModalMessage || !els.confirmModalBtnYes) {
@@ -134,7 +150,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }, 200); 
     };
 
-    // Navegación
+    // --- Navegación ---
     const setActiveSection = (sectionId) => {
         if (!sectionId || typeof sectionId !== 'string') return;
         els.contentSections?.forEach(section => section.classList.remove('active'));
@@ -159,7 +175,7 @@ document.addEventListener('DOMContentLoaded', () => {
         closeSidebar(); 
     };
     
-    // Previsualización de Imágenes
+    // --- Previsualización de Imágenes ---
     const renderImagePreview = () => {
         if (!els.imagePreviewContainer || !els.padImagenes) return;
         const imageUrls = els.padImagenes.value.split(',').map(url => url.trim()).filter(Boolean);
@@ -183,7 +199,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     };
     
-    // Validación de Campos
+    // --- Validación de Campos ---
     const validateField = (element, regex) => {
         if (!element) return false;
         const value = element.value.trim();
@@ -204,7 +220,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
-    // Autocompletado
+    // --- Autocompletado ---
     const generateAutocompleteData = (pads) => {
         autocompleteData = {};
         if (!Array.isArray(pads)) return;
@@ -246,7 +262,7 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
 
-    // Resets de Formularios
+    // --- Resets de Formularios ---
     const resetAppForm = () => {
         if (els.appForm) els.appForm.reset();
         if (els.editingAppIndexInput) els.editingAppIndexInput.value = "-1";
@@ -265,8 +281,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const resetFormsAndMode = () => {
         if (els.padFormMain) els.padFormMain.reset();
-        if (els.editIndexInput) els.editIndexInput.value = "-1";
-        editIndex = -1;
+        currentEditingId = null; 
         currentApps = [];
         if (els.formModeTitle) els.formModeTitle.textContent = "Añadir Nueva Pastilla";
         if (els.saveButtonText) els.saveButtonText.textContent = "Guardar Pastilla";
@@ -287,10 +302,10 @@ document.addEventListener('DOMContentLoaded', () => {
         renderCurrentApps();
     };
 
-    // Estadísticas
+    // --- Estadísticas (ahora usa allPadsCache) ---
     const calculateTotalApps = () => {
-        if (!Array.isArray(masterPadList)) return 0;
-        return masterPadList.reduce((total, pad) => {
+        if (!Array.isArray(allPadsCache)) return 0;
+        return allPadsCache.reduce((total, pad) => {
             const appsLength = (pad && Array.isArray(pad.aplicaciones)) ? pad.aplicaciones.length : 0;
             return total + appsLength;
         }, 0);
@@ -299,14 +314,14 @@ document.addEventListener('DOMContentLoaded', () => {
     const updateDashboardStats = () => {
         totalAppsInList = calculateTotalApps();
         if (els.padCountDashboard) {
-            els.padCountDashboard.textContent = Array.isArray(masterPadList) ? masterPadList.length : 0;
+            els.padCountDashboard.textContent = Array.isArray(allPadsCache) ? allPadsCache.length : 0;
         }
         if (els.appsTotalDashboard) {
             els.appsTotalDashboard.textContent = totalAppsInList;
         }
     };
 
-    // Mensajes de Estado
+    // --- Mensajes de Estado ---
     const showStatus = (element, message, isError = false, duration = 4000) => {
         if (!element) return;
         element.textContent = message;
@@ -322,39 +337,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }, duration);
     };
 
-    // Generación de JSON
-    const generateJsonString = () => {
-        if (!Array.isArray(masterPadList) || masterPadList.length === 0) return '[]';
-        const sortedList = [...masterPadList];
-        sortedList.sort((a, b) => {
-            const refA_id = (a?.ref?.[0] || '').toLowerCase();
-            const refB_id = (b?.ref?.[0] || '').toLowerCase();
-            return refA_id.localeCompare(refB_id, undefined, { numeric: true, sensitivity: 'base' });
-        });
-        try {
-            const compactJson = JSON.stringify(sortedList);
-            const formattedJson = compactJson.replace(/},{/g, '},\n{');
-            return formattedJson;
-        } catch (err) {
-            console.error("Error stringifying data:", err);
-            showStatus(els.downloadStatus, `Error interno al generar JSON: ${err.message}`, true);
-            return '[]';
-        }
-    };
-
-    const displayFormattedJson = (jsonString) => {
-        if (!els.jsonOutput) return;
-        try {
-            const reCompact = jsonString.replace(/},\n{/g, '},{');
-            const parsedData = JSON.parse(reCompact);
-            els.jsonOutput.value = JSON.stringify(parsedData, null, 2);
-        } catch (e) {
-            console.error("Error formatting JSON for display:", e, jsonString);
-             els.jsonOutput.value = jsonString;
-        }
-    };
-
-    // Renderizado de Lista de Apps
+    // --- Renderizado de Lista de Apps ---
     const renderCurrentApps = () => {
         if (!els.currentAppsList) return;
         if (!Array.isArray(currentApps) || currentApps.length === 0) {
@@ -386,7 +369,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }).join('');
     };
 
-    // Cargar Datos en Formularios
+    // --- Cargar Datos en Formularios ---
     const loadAppDataIntoForm = (index) => {
         if (!Array.isArray(currentApps) || index < 0 || index >= currentApps.length) return;
         const app = currentApps[index];
@@ -412,10 +395,15 @@ document.addEventListener('DOMContentLoaded', () => {
         if (els.appMarca) els.appMarca.focus();
     };
 
-    const loadPadDataIntoForms = (padData, index) => {
-         if (!padData || typeof padData !== 'object') return;
-        editIndex = index;
-        if (els.editIndexInput) els.editIndexInput.value = index;
+    const loadPadDataIntoForms = (docId) => { 
+         const padData = allPadsCache.find(p => p.id === docId); 
+         if (!padData) {
+             console.error("No se encontró la pastilla en el cache con ID:", docId);
+             return;
+         }
+
+        currentEditingId = docId; 
+        
         if (els.padRef) els.padRef.value = (Array.isArray(padData.ref) ? padData.ref : []).join(', ');
         if (els.padOem) els.padOem.value = (Array.isArray(padData.oem) ? padData.oem : []).join(', ');
         if (els.padFmsi) els.padFmsi.value = (Array.isArray(padData.fmsi) ? padData.fmsi : []).join(', ');
@@ -453,236 +441,152 @@ document.addEventListener('DOMContentLoaded', () => {
         if (els.padRef) els.padRef.focus();
     };
 
-    // Efecto Ripple
-    const createRippleEffect = (event) => {
-        const button = event.currentTarget;
-        if (!button || typeof button.getBoundingClientRect !== 'function') return;
-        const circle = document.createElement('span');
-        const diameter = Math.max(button.clientWidth, button.clientHeight);
-        const radius = diameter / 2;
-        const rect = button.getBoundingClientRect();
-        circle.style.width = circle.style.height = `${diameter}px`;
-        const rippleX = event.clientX - rect.left - radius;
-        const rippleY = event.clientY - rect.top - radius;
-        circle.style.left = `${rippleX}px`;
-        circle.style.top = `${rippleY}px`;
-        circle.classList.add('ripple');
-        const existingRipple = button.querySelector('.ripple');
-        if (existingRipple) existingRipple.remove();
-        button.insertBefore(circle, button.firstChild);
-        circle.addEventListener('animationend', () => { if (circle.parentNode) circle.remove(); }, { once: true });
-    };
-    
-    
-    // --- FUNCIÓN PROCESAR EXCEL ---
-    const processExcelFile = (file) => {
+    // --- ▼▼▼ FUNCIÓN DE MIGRACIÓN DE DATOS ▼▼▼ ---
+    const parseFileToPads = (file) => {
         return new Promise((resolve, reject) => {
-            if (typeof XLSX === 'undefined') {
-                return reject(new Error("La librería XLSX no se pudo cargar. Revisa la conexión a internet."));
+            if (!file) return reject(new Error("No se seleccionó ningún archivo."));
+
+            // Lógica para JSON
+            if (file.name.endsWith('.json')) {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    try {
+                        let dataToParse = e.target.result;
+                        if (dataToParse.startsWith('[') && dataToParse.endsWith(']') && dataToParse.includes('},\n{')) {
+                             dataToParse = dataToParse.replace(/},\n{/g, '},{');
+                        }
+                        const data = JSON.parse(dataToParse);
+                        if (!Array.isArray(data)) throw new Error("JSON no es un array.");
+                        resolve(data);
+                    } catch (err) {
+                        reject(err);
+                    }
+                };
+                reader.onerror = (err) => reject(new Error("Error al leer el archivo JSON."));
+                reader.readAsText(file);
             }
-            
-            const reader = new FileReader();
-            reader.onload = (e) => {
-                try {
-                    const data = e.target.result;
-                    const workbook = XLSX.read(data, { type: 'array' });
-                    const sheetName = workbook.SheetNames[0];
-                    const worksheet = workbook.Sheets[sheetName];
-                    const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: "" });
+            // Lógica para Excel (reutilizada de antes)
+            else if (file.name.endsWith('.xlsx') || file.name.endsWith('.xls')) {
+                if (typeof XLSX === 'undefined') {
+                    return reject(new Error("La librería XLSX no se pudo cargar."));
+                }
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    try {
+                        const data = e.target.result;
+                        const workbook = XLSX.read(data, { type: 'array' });
+                        const sheetName = workbook.SheetNames[0];
+                        const worksheet = workbook.Sheets[sheetName];
+                        const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: "" });
 
-                    if (jsonData.length < 2) {
-                        throw new Error("El archivo Excel está vacío o no tiene encabezados.");
-                    }
-                    
-                    const headers = jsonData[0].map(h => String(h).trim());
-                    const rows = jsonData.slice(1);
-                    
-                    const colMap = {
-                        ref: headers.indexOf('ref'),
-                        fmsi: headers.indexOf('fmsi'),
-                        posicion: headers.indexOf('posición'),
-                        marca: headers.indexOf('marca'),
-                        serie: headers.indexOf('serie'),
-                        anio: headers.indexOf('año'),
-                        litros: headers.indexOf('litros'),
-                        espec: headers.indexOf('especificacion')
-                    };
-
-                    if (colMap.ref === -1 || colMap.marca === -1 || colMap.serie === -1 || colMap.anio === -1) {
-                        console.error("Columnas detectadas:", headers);
-                        throw new Error("El Excel no tiene las columnas requeridas. Se necesita: 'ref', 'marca', 'serie', 'año'.");
-                    }
-
-                    console.log(`✅ Leídas ${rows.length} filas desde Excel. Procesando...`);
-                    
-                    const pads_agrupadas = {};
-
-                    const toTitleCase = (str) => {
-                        if (!str) return "";
-                        return str.toLowerCase().replace(/\b\w/g, char => char.toUpperCase());
-                    };
-
-                    const formatYearJS = (anio_str) => {
-                        if (!anio_str) return "";
-                        const partes = anio_str.split('-');
-                        const partes_procesadas = partes.map(parte => {
-                            const parte_limpia = parte.trim();
-                            if (parte_limpia.length === 4 && /^(19|20)\d{2}$/.test(parte_limpia)) {
-                                return parte_limpia.substring(2);
-                            } else if (parte_limpia.length === 2 && /^\d{2}$/.test(parte_limpia)) {
-                                return parte_limpia;
-                            }
-                            return parte_limpia;
-                        });
-                        const aniosUnidos = partes_procesadas.filter(Boolean).join('-');
-                        const aniosPartidos = aniosUnidos.split('-');
-                        if (aniosPartidos.length === 2 && aniosPartidos[0] === aniosPartidos[1]) {
-                            return aniosPartidos[0];
-                        }
-                        return aniosUnidos;
-                    };
-                    
-                    for (const [index, fila] of rows.entries()) {
-                        const ref_id_val = String(fila[colMap.ref] || '').trim();
+                        if (jsonData.length < 2) throw new Error("El archivo Excel está vacío.");
                         
-                        if (!ref_id_val) {
-                             console.warn(`⚠️ Advertencia: Fila ${index + 2} ignorada (columna 'ref' está vacía)`);
-                             continue;
-                        }
-
-                        const marca_app = toTitleCase(String(fila[colMap.marca] || '').trim());
-                        const serie_app = toTitleCase(String(fila[colMap.serie] || '').trim());
-
-                        if (!marca_app || !serie_app) {
-                            console.warn(`⚠️ Advertencia: Fila ${index + 2} (Ref ID: ${ref_id_val}) tiene Marca o Modelo vacío. Se incluirá igualmente.`);
-                        }
-
-                        const fmsi_val = String(fila[colMap.fmsi] || '').trim();
-                        const posicion_excel = String(fila[colMap.posicion] || '').trim();
+                        const headers = jsonData[0].map(h => String(h).trim());
+                        const rows = jsonData.slice(1);
                         
-                        let posicion_json = "Delantera";
-                        if (posicion_excel.toLowerCase().includes("del")) posicion_json = "Delantera";
-                        else if (posicion_excel.toLowerCase().includes("tras")) posicion_json = "Trasera";
-
-                        const aplicacion_actual = {
-                            "marca": marca_app,
-                            "serie": serie_app,
-                            "litros": String(fila[colMap.litros] || '').trim(),
-                            "año": formatYearJS(String(fila[colMap.anio] || '').trim()),
-                            "especificacion": String(fila[colMap.espec] || '').trim()
+                        const colMap = {
+                            ref: headers.indexOf('ref'),
+                            fmsi: headers.indexOf('fmsi'),
+                            posicion: headers.indexOf('posición'),
+                            marca: headers.indexOf('marca'),
+                            serie: headers.indexOf('serie'),
+                            anio: headers.indexOf('año'),
+                            litros: headers.indexOf('litros'),
+                            espec: headers.indexOf('especificacion')
                         };
 
-                        if (!(ref_id_val in pads_agrupadas)) {
-                            const ref_id_con_inc = `${ref_id_val}INC`;
-                            pads_agrupadas[ref_id_val] = {
-                                "ref": [ref_id_con_inc],
-                                "oem": [],
-                                "fmsi": [fmsi_val].filter(Boolean),
-                                "posición": posicion_json,
-                                "medidas": [],
-                                "imagenes": [],
-                                "aplicaciones": [aplicacion_actual]
+                        if (colMap.ref === -1 || colMap.marca === -1 || colMap.serie === -1 || colMap.anio === -1) {
+                            throw new Error("El Excel no tiene las columnas requeridas. Se necesita: 'ref', 'marca', 'serie', 'año'.");
+                        }
+
+                        const pads_agrupadas = {};
+                        const toTitleCase = (str) => !str ? "" : str.toLowerCase().replace(/\b\w/g, char => char.toUpperCase());
+                        const formatYearJS = (anio_str) => {
+                            if (!anio_str) return "";
+                            const partes = anio_str.split('-').map(p => {
+                                const limpia = p.trim();
+                                if (limpia.length === 4 && /^(19|20)\d{2}$/.test(limpia)) return limpia.substring(2);
+                                if (limpia.length === 2 && /^\d{2}$/.test(limpia)) return limpia;
+                                return limpia;
+                            });
+                            const unidos = partes.filter(Boolean).join('-');
+                            const partidos = unidos.split('-');
+                            return (partidos.length === 2 && partidos[0] === partidos[1]) ? partidos[0] : unidos;
+                        };
+                        
+                        for (const fila of rows) {
+                            const ref_id_val = String(fila[colMap.ref] || '').trim();
+                            if (!ref_id_val) continue;
+
+                            const marca_app = toTitleCase(String(fila[colMap.marca] || '').trim());
+                            const serie_app = toTitleCase(String(fila[colMap.serie] || '').trim());
+                            const fmsi_val = String(fila[colMap.fmsi] || '').trim();
+                            const pos_excel = String(fila[colMap.posicion] || '').trim();
+                            let pos_json = "Delantera";
+                            if (pos_excel.toLowerCase().includes("del")) pos_json = "Delantera";
+                            else if (pos_excel.toLowerCase().includes("tras")) pos_json = "Trasera";
+
+                            const app_actual = {
+                                "marca": marca_app,
+                                "serie": serie_app,
+                                "litros": String(fila[colMap.litros] || '').trim(),
+                                "año": formatYearJS(String(fila[colMap.anio] || '').trim()),
+                                "especificacion": String(fila[colMap.espec] || '').trim()
                             };
-                        } else {
-                            pads_agrupadas[ref_id_val]["aplicaciones"].push(aplicacion_actual);
-                            if (fmsi_val && !pads_agrupadas[ref_id_val]["fmsi"].includes(fmsi_val)) {
-                                pads_agrupadas[ref_id_val]["fmsi"].push(fmsi_val);
+
+                            if (!(ref_id_val in pads_agrupadas)) {
+                                const ref_id_con_inc = `${ref_id_val}INC`;
+                                pads_agrupadas[ref_id_val] = {
+                                    "ref": [ref_id_con_inc], "oem": [], "fmsi": [fmsi_val].filter(Boolean),
+                                    "posición": pos_json, "medidas": [], "imagenes": [],
+                                    "aplicaciones": [app_actual]
+                                };
+                            } else {
+                                pads_agrupadas[ref_id_val]["aplicaciones"].push(app_actual);
+                                if (fmsi_val && !pads_agrupadas[ref_id_val]["fmsi"].includes(fmsi_val)) {
+                                    pads_agrupadas[ref_id_val]["fmsi"].push(fmsi_val);
+                                }
                             }
                         }
-                    } 
+                        resolve(Object.values(pads_agrupadas));
 
-                    const lista_json_final = Object.values(pads_agrupadas);
-                    lista_json_final.sort((a, b) => (a?.ref?.[0] || '').toLowerCase().localeCompare((b?.ref?.[0] || '').toLowerCase(), undefined, { numeric: true }));
-
-                    console.log(`✅ ¡Éxito! Procesadas ${lista_json_final.length} pastillas únicas desde Excel.`);
-                    resolve(lista_json_final);
-
-                } catch (err) {
-                    console.error("Error al procesar el archivo Excel:", err);
-                    reject(err);
-                }
-            };
-            reader.onerror = (error) => {
-                console.error("Error al leer el archivo:", error);
-                reject(new Error("No se pudo leer el archivo."));
-            };
-            reader.readAsArrayBuffer(file);
+                    } catch (err) {
+                        reject(err);
+                    }
+                };
+                reader.onerror = (err) => reject(new Error("Error al leer el archivo Excel."));
+                reader.readAsArrayBuffer(file);
+            }
+            else {
+                reject(new Error("Tipo de archivo no soportado. Usa .json o .xlsx"));
+            }
         });
     };
-    
-    // --- FUNCIÓN EXPORTAR A EXCEL ---
-    const exportToExcel = () => {
-        if (!Array.isArray(masterPadList) || masterPadList.length === 0) {
-            showStatus(els.downloadStatus, "No hay datos para exportar a Excel.", true);
-            return;
+
+    const uploadPadsToFirebase = async (padsToUpload) => {
+        if (!Array.isArray(padsToUpload) || padsToUpload.length === 0) {
+            throw new Error("No hay pastillas para subir.");
         }
-        console.log("Aplanando datos para exportar a Excel...");
-        
-        const flattenedData = [];
-        const headers = [
-            'ref', 'oem', 'fmsi', 'posición', 'medidas', 'imagenes',
-            'marca', 'serie', 'litros', 'año', 'especificacion'
-        ]; 
 
-        for (const pad of masterPadList) {
-            const refString = (pad.ref || []).join(', ');
-            const oemString = (pad.oem || []).join(', ');
-            const fmsiString = (pad.fmsi || []).join(', ');
-            const imagenesString = (pad.imagenes || []).join(', ');
-            const medidasString = (Array.isArray(pad.medidas) ? pad.medidas.join(', ') : (pad.medidas || ''));
+        // Usamos un "Batch" para subir todos los datos en un solo lote. Es más rápido.
+        const batch = writeBatch(db);
+        let count = 0;
 
-            if (pad.aplicaciones && pad.aplicaciones.length > 0) {
-                for (const app of pad.aplicaciones) {
-                    flattenedData.push({
-                        'ref': refString,
-                        'oem': oemString,
-                        'fmsi': fmsiString,
-                        'posición': pad.posición || '',
-                        'medidas': medidasString,
-                        'imagenes': imagenesString,
-                        'marca': app.marca || '',
-                        'serie': app.serie || '',
-                        'litros': app.litros || '',
-                        'año': app.año || '',
-                        'especificacion': app.especificacion || ''
-                    });
-                }
+        for (const pad of padsToUpload) {
+            if (pad.ref && Array.isArray(pad.ref) && pad.ref.length > 0) {
+                const docId = pad.ref[0]; // Usamos la primera referencia como ID
+                const docRef = doc(db, "pastillas", docId);
+                batch.set(docRef, pad);
+                count++;
             } else {
-                flattenedData.push({
-                    'ref': refString,
-                    'oem': oemString,
-                    'fmsi': fmsiString,
-                    'posición': pad.posición || '',
-                    'medidas': medidasString,
-                    'imagenes': imagenesString,
-                });
+                console.warn("Se ignoró una pastilla sin 'ref' válida:", pad);
             }
         }
-        
-        try {
-            const ws = XLSX.utils.json_to_sheet(flattenedData, { 
-                header: headers
-            });
-            
-            ws['!autofilter'] = { ref: XLSX.utils.encode_range(XLSX.utils.decode_range(ws['!ref'])) };
-            
-            const colWidths = [
-                {wch: 20}, {wch: 15}, {wch: 15}, {wch: 10}, {wch: 15}, {wch: 20},
-                {wch: 20}, {wch: 25}, {wch: 10}, {wch: 15}, {wch: 25}
-            ]; 
-            ws['!cols'] = colWidths;
 
-            const wb = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(wb, ws, 'Pastillas');
-            XLSX.writeFile(wb, 'data_exportada.xlsx');
-            
-            showStatus(els.downloadStatus, `data_exportada.xlsx generado con ${flattenedData.length} filas.`, false);
-
-        } catch (err) {
-            console.error("Error al exportar a Excel:", err);
-            showStatus(els.downloadStatus, `Error al exportar Excel: ${err.message}`, true);
-        }
+        await batch.commit(); // Enviamos el lote a Firebase
+        return count; // Devolvemos cuántas se subieron
     };
+    // --- ▲▲▲ FIN FUNCIÓN DE MIGRACIÓN ▲▲▲ ---
 
 
     // ----- EVENT LISTENERS -----
@@ -690,9 +594,9 @@ document.addEventListener('DOMContentLoaded', () => {
         console.log("Adding event listeners...");
 
         // --- Listeners Menú Móvil ---
-        els.menuToggleBtn.addEventListener('click', openSidebar); // ☰ Abre
-        els.sidebarOverlay.addEventListener('click', closeSidebar); // Overlay Cierra
-        els.sidebarCloseBtn.addEventListener('click', closeSidebar); // 'X' Cierra
+        els.menuToggleBtn.addEventListener('click', openSidebar); 
+        els.sidebarOverlay.addEventListener('click', closeSidebar); 
+        els.sidebarCloseBtn.addEventListener('click', closeSidebar); 
 
         // Modales
         els.confirmModalBtnYes?.addEventListener('click', () => hideCustomConfirm(true));
@@ -707,61 +611,56 @@ document.addEventListener('DOMContentLoaded', () => {
                 e.preventDefault();
                 const section = item.dataset?.section;
                 if (section) setActiveSection(section);
-                // closeSidebar() es llamado por setActiveSection()
             });
         });
 
-        // Carga de Archivo (JSON o Excel)
-        els.fileImport.addEventListener('change', async (e) => {
+        // --- ▼▼▼ LISTENERS DE MIGRACIÓN ▼▼▼ ---
+        els.migrationFileInput.addEventListener('change', (e) => {
             const file = e.target.files?.[0];
-            if (!file) {
-                if (els.fileName) els.fileName.textContent = "Ningún archivo seleccionado.";
-                return;
-            }
-            if (els.fileName) els.fileName.textContent = file.name;
-
-            try {
-                let data;
-                if (file.name.endsWith('.json')) {
-                    const result = await file.text();
-                    let dataToParse = result;
-                    if (result.startsWith('[') && result.endsWith(']') && result.includes('},\n{')) {
-                         dataToParse = result.replace(/},\n{/g, '},{');
-                    }
-                    data = JSON.parse(dataToParse);
-                    if (!Array.isArray(data)) throw new Error("JSON no es un array.");
-                    console.log("✅ JSON cargado exitosamente.");
-
-                } else if (file.name.endsWith('.xlsx') || file.name.endsWith('.xls')) {
-                    showStatus(els.importStatus, "Procesando archivo Excel...", false, 20000);
-                    data = await processExcelFile(file);
-                    
-                } else {
-                    throw new Error("Tipo de archivo no soportado. Usa .json o .xlsx");
-                }
-                
-                masterPadList = data;
-                generateAutocompleteData(masterPadList); 
-                updateMarcaDatalist(); 
-                
-                updateDashboardStats();
-                showStatus(els.importStatus, `¡Éxito! ${masterPadList.length} pastillas cargadas desde ${file.name}.`, false);
-                resetFormsAndMode();
-                if (els.jsonOutput) els.jsonOutput.value = '';
-
-            } catch (err) {
-                console.error("Error al procesar archivo:", err);
-                showStatus(els.importStatus, `Error: ${err.message}`, true);
-                masterPadList = [];
-                generateAutocompleteData([]); 
-                updateMarcaDatalist(); 
-                updateDashboardStats();
-                if (els.fileName) els.fileName.textContent = file.name + " (Error)";
-                if (els.jsonOutput) els.jsonOutput.value = '';
-            } finally {
-                if (e.target) e.target.value = null; 
+            if (file) {
+                migrationFile = file;
+                els.migrationFileName.textContent = file.name;
+            } else {
+                migrationFile = null;
+                els.migrationFileName.textContent = "Ningún archivo.";
             }
         });
+
+        els.migrationUploadBtn.addEventListener('click', async () => {
+            if (!migrationFile) {
+                showStatus(els.migrationStatus, "Selecciona un archivo primero.", true);
+                return;
+            }
+
+            const confirmed = await showCustomConfirm(
+                `¿Estás SEGURO? Esto sobrescribirá TODOS los datos en Firebase con el contenido de '${migrationFile.name}'.`,
+                "Confirmar Migración",
+                "Sí, Sobrescribir Todo",
+                "btn-danger"
+            );
+
+            if (!confirmed) return;
+
+            showStatus(els.migrationStatus, `Procesando archivo '${migrationFile.name}'...`, false, 20000);
+            
+            try {
+                const pads = await parseFileToPads(migrationFile);
+                showStatus(els.migrationStatus, `Archivo procesado. Subiendo ${pads.length} pastillas a Firebase...`, false, 20000);
+                
+                const uploadedCount = await uploadPadsToFirebase(pads);
+                
+                showStatus(els.migrationStatus, `¡Éxito! ${uploadedCount} pastillas subidas a Firebase.`, false);
+                migrationFile = null;
+                els.migrationFileName.textContent = "Ningún archivo.";
+                els.migrationFileInput.value = null;
+
+            } catch (err) {
+                console.error("Error en la migración:", err);
+                showStatus(els.migrationStatus, `Error: ${err.message}`, true, 10000);
+            }
+        });
+        // --- ▲▲▲ FIN LISTENERS DE MIGRACIÓN ▲▲▲ ---
+
 
         // --- BÚSQUEDA ---
         const updateSearchPlaceholder = () => {
@@ -792,12 +691,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (query.length === 0) els.searchResults.innerHTML = '';
                 return;
             }
-            if (!Array.isArray(masterPadList) || masterPadList.length === 0) {
-                els.searchResults.innerHTML = '<div class="search-feedback error">Carga datos primero.</div>';
+            if (!Array.isArray(allPadsCache) || allPadsCache.length === 0) {
+                els.searchResults.innerHTML = '<div class="search-feedback error">La base de datos está vacía.</div>';
                 return;
             }
 
-            const results = masterPadList.reduce((acc, pad, index) => {
+            const results = allPadsCache.reduce((acc, pad) => { 
                 let foundMatch = null;
                 try {
                     switch(searchType) {
@@ -823,7 +722,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 } catch (e) { console.error("Error buscando en pastilla:", e, pad); }
 
                  if (foundMatch) {
-                     acc.push({ pad, index, foundText: foundMatch });
+                     acc.push({ pad, docId: pad.id, foundText: foundMatch }); 
                  }
                  return acc;
             }, []); 
@@ -837,9 +736,9 @@ document.addEventListener('DOMContentLoaded', () => {
                             <span class="search-result-match">${r.foundText}</span>
                             <span class="search-result-context">(${searchType.toUpperCase()} / ${r.pad.ref[0] || 'N/A'})</span>
                         </div>
-                        <button type="button" class="btn btn-secondary edit-btn" data-index="${r.index}">Cargar</button>
+                        <button type="button" class="btn btn-secondary edit-btn" data-id="${r.docId}">Cargar</button>
                     </div>
-                `).join('');
+                `).join(''); 
             }
         };
         
@@ -860,12 +759,9 @@ document.addEventListener('DOMContentLoaded', () => {
         els.searchResults.addEventListener('click', (e) => {
             const targetButton = e.target.closest('.edit-btn');
             if (targetButton) {
-                const indexStr = targetButton.dataset.index;
-                if (indexStr) {
-                     const index = parseInt(indexStr, 10);
-                     if (!isNaN(index) && index >= 0 && Array.isArray(masterPadList) && index < masterPadList.length) {
-                         loadPadDataIntoForms(masterPadList[index], index);
-                     }
+                const docId = targetButton.dataset.id; 
+                if (docId) {
+                     loadPadDataIntoForms(docId); 
                 }
             }
         });
@@ -937,8 +833,8 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
 
-        // Guardar/Actualizar Pastilla
-        els.savePadBtn.addEventListener('click', () => {
+        // --- GUARDAR/ACTUALIZAR PASTILLA (FIREBASE) ---
+        els.savePadBtn.addEventListener('click', async () => {
             const isMedidasValid = validateField(els.padMedidas, medidasRegex);
             if (!isMedidasValid) {
                  showStatus(els.savePadStatus, "El formato de Medidas es incorrecto. Debe ser '100 x 50' o '100 x 50, 110 x 60'.", true, 5000);
@@ -946,17 +842,15 @@ document.addEventListener('DOMContentLoaded', () => {
                  return;
             }
 
-            const refsValue = els.padRef.value || '';
-            const refsArray = refsValue.split(',').map(s => s.trim()).filter(Boolean);
-
+            const refsArray = (els.padRef.value || '').split(',').map(s => s.trim()).filter(Boolean);
             if (refsArray.length === 0) {
                 showStatus(els.savePadStatus, "La Referencia (ID) es obligatoria.", true);
                 if(els.padRef.focus) els.padRef.focus();
                 return;
             }
             
-            showStatus(els.savePadStatus, "", false, 1); 
-
+            showStatus(els.savePadStatus, "Guardando en Firebase...", false, 10000);
+            
             const newPad = {
                 ref: refsArray,
                 oem: (els.padOem?.value || '').split(',').map(s => s.trim()).filter(Boolean),
@@ -967,61 +861,72 @@ document.addEventListener('DOMContentLoaded', () => {
                 aplicaciones: Array.isArray(currentApps) ? currentApps : [],
             };
 
-            let message = "";
-            if (!Array.isArray(masterPadList)) masterPadList = [];
-
-            if (editIndex > -1 && editIndex < masterPadList.length) {
-                masterPadList[editIndex] = newPad;
-                message = `¡Pastilla "${refsArray[0]}" actualizada!`;
-            } else {
-                masterPadList.push(newPad);
-                message = `¡Pastilla "${refsArray[0]}" guardada!`;
-            }
             
-            generateAutocompleteData(masterPadList);
-            updateMarcaDatalist();
+            const docId = refsArray[0]; 
+            let message = "";
 
-            updateDashboardStats();
-            resetFormsAndMode();
-            setActiveSection('dashboard');
-            showStatus(els.importStatus, message, false); 
+            try {
+                if (currentEditingId && currentEditingId !== docId) {
+                    const oldDocRef = doc(db, "pastillas", currentEditingId);
+                    await deleteDoc(oldDocRef);
+                    message = `¡Pastilla movida de "${currentEditingId}" a "${docId}"!`;
+                } else if (currentEditingId) {
+                    message = `¡Pastilla "${docId}" actualizada!`;
+                } else {
+                    message = `¡Pastilla "${docId}" creada!`;
+                }
+                
+                const newDocRef = doc(db, "pastillas", docId);
+                await setDoc(newDocRef, newPad);
+                
+                resetFormsAndMode();
+                setActiveSection('dashboard');
+                
+                showStatus(els.connectionStatusText, message, false);
+
+            } catch (err) {
+                console.error("Error guardando en Firebase:", err);
+                showStatus(els.savePadStatus, `Error de Firebase: ${err.message}`, true, 6000);
+            }
         });
         
-        // --- LISTENER: ELIMINAR PASTILLA ---
+        // --- ELIMINAR PASTILLA (FIREBASE) ---
         els.deletePadBtn.addEventListener('click', async () => {
-            if (editIndex < 0 || !Array.isArray(masterPadList) || editIndex >= masterPadList.length) {
+            if (!currentEditingId) {
                 showStatus(els.savePadStatus, "No hay pastilla válida cargada para eliminar.", true);
                 return;
             }
 
-            const padToRemove = masterPadList[editIndex];
-            const refId = (padToRemove?.ref?.[0] || 'esta pastilla');
-            const message = `¿Estás SEGURO de eliminar la pastilla "${refId}"? Esta acción es permanente.`;
+            const refId = currentEditingId;
+            const message = `¿Estás SEGURO de eliminar la pastilla "${refId}" de la base de datos? Esta acción es permanente.`;
             
             const confirmed = await showCustomConfirm(message, "Eliminar Pastilla", "Sí, Eliminar", "btn-danger");
             
             if (confirmed) {
-                masterPadList.splice(editIndex, 1); 
+                showStatus(els.savePadStatus, "Eliminando de Firebase...", false, 10000);
+                try {
+                    const docRef = doc(db, "pastillas", refId);
+                    await deleteDoc(docRef);
+                    
+                    showStatus(els.connectionStatusText, `Pastilla "${refId}" eliminada.`, false);
+                    resetFormsAndMode();
+                    setActiveSection('dashboard');
                 
-                generateAutocompleteData(masterPadList);
-                updateMarcaDatalist();
-
-                showStatus(els.importStatus, `Pastilla "${refId}" eliminada.`, false);
-                updateDashboardStats();
-                resetFormsAndMode();
-                setActiveSection('dashboard');
+                } catch (err) {
+                    console.error("Error eliminando de Firebase:", err);
+                    showStatus(els.savePadStatus, `Error de Firebase: ${err.message}`, true, 6000);
+                }
             }
         });
 
         // --- LISTENER: DUPLICAR PASTILLA ---
         els.duplicatePadBtn.addEventListener('click', () => {
-            if (editIndex < 0) { 
+            if (!currentEditingId) { 
                 showStatus(els.savePadStatus, "Carga una pastilla primero para duplicarla.", true);
                 return;
             }
             
-            editIndex = -1;
-            if (els.editIndexInput) els.editIndexInput.value = "-1";
+            currentEditingId = null;
             
             const firstRefId = els.padRef.value.split(',')[0].trim() || 'pastilla';
             if (els.formModeTitle) els.formModeTitle.textContent = `Duplicando: ${firstRefId}`;
@@ -1057,69 +962,6 @@ document.addEventListener('DOMContentLoaded', () => {
         if(els.padMedidas) {
             els.padMedidas.addEventListener('input', () => validateField(els.padMedidas, medidasRegex));
         }
-
-
-        // Generar y Descargar JSON
-        els.generateDownloadBtn.addEventListener('click', () => {
-            const jsonString = generateJsonString();
-            displayFormattedJson(jsonString); 
-
-            if (!Array.isArray(masterPadList) || masterPadList.length === 0) {
-                showStatus(els.downloadStatus, "No hay datos cargados para generar.", true);
-                return;
-            }
-            try {
-                const blob = new Blob([jsonString], { type: 'application/json;charset=utf-8' });
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.style.display = 'none';
-                a.href = url;
-                a.download = 'data.json';
-                document.body.appendChild(a);
-                a.click();
-                setTimeout(() => { URL.revokeObjectURL(url); document.body.removeChild(a); }, 100);
-                showStatus(els.downloadStatus, `data.json (${masterPadList.length} pastillas) generado.`, false);
-            } catch (err) {
-                console.error("Error descarga Blob:", err);
-                showStatus(els.downloadStatus, `Error descarga: ${err.message}`, true);
-            }
-        });
-        
-        // EXPORTAR A EXCEL
-        els.exportExcelBtn.addEventListener('click', exportToExcel);
-
-        // Copiar JSON
-        els.copyJsonBtn.addEventListener('click', () => {
-            const jsonToCopy = els.jsonOutput.value;
-             if (!jsonToCopy || jsonToCopy.length === 0 || jsonToCopy === '[]') {
-                showStatus(els.copyStatus, "No hay JSON en vista previa.", true);
-                return;
-            }
-            navigator.clipboard.writeText(jsonToCopy)
-                .then(() => showStatus(els.copyStatus, "¡JSON (formateado) copiado!", false))
-                .catch(err => {
-                    console.error("Error copia Clipboard:", err);
-                    showStatus(els.copyStatus, `Error copia: ${err.message}.`, true);
-                });
-        });
-
-        // Limpiar Sesión
-        els.clearAllBtn.addEventListener('click', async () => {
-            const message = "¿Estás SEGURO de que quieres borrar todos los datos de esta sesión? Esta acción no se puede deshacer.";
-            const confirmed = await showCustomConfirm(message, "Limpiar Sesión", "Sí, Limpiar Todo", "btn-danger");
-            if (confirmed) {
-                masterPadList = [];
-                generateAutocompleteData([]); 
-                updateMarcaDatalist(); 
-                resetFormsAndMode();
-                updateDashboardStats();
-                if (els.jsonOutput) els.jsonOutput.value = '';
-                if (els.fileName) els.fileName.textContent = 'Ningún archivo seleccionado.';
-                if (els.fileImport) els.fileImport.value = '';
-                showStatus(els.importStatus, "Sesión limpiada.", false);
-                setActiveSection('dashboard');
-            }
-        });
 
         // Modo Oscuro
         els.darkBtn.addEventListener('click', (e) => {
@@ -1168,12 +1010,79 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     } catch (storageError) { console.warn("No se pudo aplicar pref modo oscuro:", storageError); }
 
+    // --- INICIALIZACIÓN DE FIREBASE ---
+    const initFirebase = () => {
+        try {
+            onAuthStateChanged(auth, (user) => {
+                if (user) {
+                    console.log("Usuario anónimo autenticado:", user.uid);
+                    loadDataFromFirebase();
+                } else {
+                    console.log("Usuario no logueado, intentando iniciar sesión...");
+                    signInAnonymously(auth).catch(err => {
+                        console.error("Error en inicio de sesión anónimo:", err);
+                        setConnectionStatus(false, `Error de autenticación: ${err.message}`);
+                    });
+                }
+            });
+        } catch (err) {
+            console.error("Error inicializando Firebase:", err);
+            setConnectionStatus(false, `Error: ${err.message}`);
+        }
+    };
+
+    const loadDataFromFirebase = () => {
+        const padsCollection = collection(db, "pastillas");
+        
+        onSnapshot(padsCollection, (snapshot) => {
+            console.log("Datos recibidos de Firestore (snapshot).");
+            allPadsCache = snapshot.docs.map(doc => ({
+                id: doc.id, 
+                ...doc.data() 
+            }));
+            
+            allPadsCache.sort((a, b) => a.id.localeCompare(b.id, undefined, { numeric: true, sensitivity: 'base' }));
+            
+            updateDashboardStats();
+            generateAutocompleteData(allPadsCache);
+            updateMarcaDatalist();
+            
+            setConnectionStatus(true, `Conectado: ${allPadsCache.length} pastillas cargadas.`);
+
+        }, (error) => {
+            console.error("Error al escuchar datos de Firestore:", error);
+            setConnectionStatus(false, `Error de Base de Datos: ${error.message}`);
+        });
+    };
+
+    const setConnectionStatus = (isSuccess, message) => {
+        if (!els.connectionStatus || !els.connectionStatusText) return;
+        
+        const icon = els.connectionStatus.querySelector('.material-icons-outlined');
+        
+        els.connectionStatus.classList.remove('status-loading', 'status-success', 'status-error');
+        
+        if (isSuccess === true) {
+            els.connectionStatus.classList.add('status-success');
+            icon.textContent = 'check_circle';
+        } else if (isSuccess === false) {
+            els.connectionStatus.classList.add('status-error');
+            icon.textContent = 'error';
+        } else {
+            els.connectionStatus.classList.add('status-loading');
+            icon.textContent = 'sync';
+        }
+        
+        els.connectionStatusText.textContent = message;
+    };
+
+
     // ----- INICIALIZAR UI -----
     try {
         setActiveSection('dashboard');
-        updateDashboardStats();
         updateSearchPlaceholder(); 
-        console.log("Admin panel UI inicializado.");
+        initFirebase(); // <-- Llamada principal para iniciar todo
+        console.log("Admin panel UI inicializado, conectando a Firebase...");
     } catch (error) {
         console.error("Error al inicializar UI:", error);
     }

@@ -10,10 +10,44 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Outlined" rel="stylesheet">
 
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-
     <link rel="stylesheet" href="admin-styles.css">
-</head>
+
+    <script type="module">
+        // Importa las funciones que necesitas
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+        import { getFirestore, collection, doc, setDoc, deleteDoc, onSnapshot, writeBatch } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js"; // Añadido writeBatch
+
+        // Tu configuración de Firebase
+        const firebaseConfig = {
+          apiKey: "AIzaSyBms6_ujBJeVOcMbnxCxS9_7R6xQSpAOI8",
+          authDomain: "brakexadmin.firebaseapp.com",
+          projectId: "brakexadmin",
+          storageBucket: "brakexadmin.firebasestorage.app",
+          messagingSenderId: "799264562947",
+          appId: "1:799264562947:web:52d860ae41a5c4b8f75336"
+        };
+
+        // Inicializa Firebase
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+
+        // Exporta las variables para que tu admin-script.js las pueda usar
+        window.firebaseTools = {
+            auth,
+            db,
+            collection,
+            doc,
+            setDoc,
+            deleteDoc,
+            onSnapshot,
+            signInAnonymously,
+            onAuthStateChanged,
+            writeBatch // <-- AÑADIDO
+        };
+    </script>
+    </head>
 <body>
 
     <div class="app-layout sidebar-closed">
@@ -22,12 +56,13 @@
             <div class="sidebar-header">
                 <div class="sidebar-logo-group">
                     <span class="material-icons-outlined logo-icon">speed</span>
-                    <span class="logo-text">Brake X Admin 1.7</span>
+                    <span class="logo-text">Brake X Admin 2.0</span> 
                 </div>
                 <button class="material-btn" id="sidebar-close-btn" aria-label="Cerrar menú">
                     <span class="material-icons-outlined">close</span>
                 </button>
             </div>
+
             <nav class="nav-menu">
                 <a href="#" class="nav-item active" data-section="dashboard">
                     <span class="material-icons-outlined">dashboard</span>
@@ -36,14 +71,6 @@
                 <a href="#" class="nav-item" data-section="edit-pad">
                     <span class="material-icons-outlined">edit_note</span>
                     <span>Añadir / Editar</span>
-                </a>
-                <a href="#" class="nav-item" data-section="export-data">
-                    <span class="material-icons-outlined">file_download</span>
-                    <span>Exportar Datos</span>
-                </a>
-                <a href="#" class="nav-item" data-section="settings">
-                    <span class="material-icons-outlined">settings</span>
-                    <span>Configuración</span>
                 </a>
             </nav>
         </aside>
@@ -64,7 +91,7 @@
                             <span class="material-icons-outlined stat-icon">inventory_2</span>
                             <div class="stat-info">
                                 <span class="stat-value" id="pad-count-dashboard">0</span>
-                                <span class="stat-label">Pastillas Cargadas</span>
+                                <span class="stat-label">Pastillas en DB</span>
                             </div>
                         </div>
                         <div class="stat-card accent-green">
@@ -75,19 +102,32 @@
                             </div>
                         </div>
                     </div>
+                    
                     <div class="card">
-                        <h2 class="card-title">Cargar `data.json` o `.xlsx`</h2>
-                        <p class="card-description">Carga tu archivo <strong>data.json</strong> o <strong>JSON.xlsx</strong> para empezar a añadir o modificar datos.</p>
+                        <h2 class="card-title">Estado de la Base de Datos</h2>
+                        <p class="card-description">Los datos se cargan en tiempo real desde Firebase Firestore. Cualquier cambio se guardará automáticamente en la nube.</p>
+                        <div id="connection-status" class="status-box status-loading">
+                            <span class="material-icons-outlined">sync</span>
+                            <span id="connection-status-text">Conectando...</span>
+                        </div>
+                    </div>
+
+                    <div class="card migration-card">
+                        <h2 class="card-title">Herramienta de Migración (Solo 1 vez)</h2>
+                        <p class="card-description">Usa esto para subir tu archivo `data.json` o `JSON.xlsx` antiguo a Firebase. Esto **sobrescribirá** los datos en la nube.</p>
                         <div class="file-upload-wrapper">
-                            <input type="file" id="file-import" accept=".json, .xlsx, .xls" class="file-input">
-                            <label for="file-import" class="btn btn-secondary file-btn">
+                            <input type="file" id="migration-file-input" accept=".json, .xlsx, .xls" class="file-input">
+                            <label for="migration-file-input" class="btn btn-secondary file-btn">
                                 <span class="material-icons-outlined">upload_file</span> Seleccionar archivo...
                             </label>
-                            <span id="file-name" class="file-name">Ningún archivo.</span>
+                            <span id="migration-file-name" class="file-name">Ningún archivo.</span>
                         </div>
-                        <span id="import-status" class="status-message"></span>
+                        <button id="migration-upload-btn" class="btn btn-danger" type="button" style="margin-top: 1rem;">
+                            <span class="material-icons-outlined">upload</span> Subir y Sobrescribir Todo
+                        </button>
+                        <span id="migration-status" class="status-message"></span>
                     </div>
-                </div>
+                    </div>
 
                 <div id="edit-pad" class="content-section">
                     
@@ -200,31 +240,6 @@
                     </div> 
                 </div> 
 
-                <div id="export-data" class="content-section">
-                     <div class="card">
-                        <h2 class="card-title">Generar y Descargar Archivos</h2>
-                        <p class="card-description">Descarga el archivo <strong>data.json</strong> (compacto, 1 línea por objeto) o un archivo <strong>data.xlsx</strong> (formato de una fila por aplicación).</p>
-                        <div class="button-group">
-                            <button id="generate-download-btn" class="btn btn-primary" type="button"> <span class="material-icons-outlined">file_download</span> Descargar JSON </button>
-                            <button id="export-excel-btn" class="btn btn-tertiary" type="button"> <span class="material-icons-outlined">grid_on</span> Exportar a Excel </button>
-                        </div>
-                        <span id="download-status" class="status-message"></span>
-                    </div>
-                    <div class="card">
-                        <h2 class="card-title">Previsualización del JSON (Formateado)</h2>
-                        <textarea id="json-output" readonly class="text-area-output" placeholder="Presiona 'Descargar JSON' para generar la vista previa..."></textarea>
-                        <button id="copy-json-btn" class="btn btn-secondary" type="button"> <span class="material-icons-outlined">content_copy</span> Copiar JSON Formateado </button>
-                        <span id="copy-status" class="status-message"></span>
-                    </div>
-                </div>
-
-                <div id="settings" class="content-section">
-                    <div class="card">
-                        <h2 class="card-title">Configuración de Sesión</h2>
-                        <p class="card-description">Borra todos los datos cargados actualmente en esta sesión del navegador. Esta acción **NO** afecta tu archivo `data.json` guardado.</p>
-                        <button id="clear-all-btn" class="btn btn-danger" type="button"> <span class="material-icons-outlined">delete_sweep</span> Limpiar Sesión Actual </button>
-                    </div>
-                </div>
             </div>
         </main>
     </div>
@@ -249,6 +264,7 @@
     
     <div id="sidebar-overlay"></div>
 
-    <script src="admin-script.js"></script> 
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script type="module" src="admin-script.js"></script> 
 </body>
 </html>

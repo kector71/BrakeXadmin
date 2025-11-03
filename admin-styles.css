@@ -13,10 +13,15 @@
     --input-border: #cbd5e0;
     --input-focus-border: #4a90e2;
 
+    /* Colores */
+    --color-blue: #4a90e2;
+    --color-green: #38a169;
+    --color-red: #e53e3e;
+
     /* Botones */
-    --btn-primary-bg: #4a90e2;
+    --btn-primary-bg: var(--color-blue);
     --btn-primary-text: #ffffff;
-    --btn-danger-bg: #e53e3e;
+    --btn-danger-bg: var(--color-red);
     --btn-danger-text: #ffffff;
     --btn-secondary-bg: #e2e8f0;
     --btn-secondary-text: #2d3748;
@@ -40,11 +45,16 @@
     --input-bg: #2d3748;
     --input-border: #4a5568;
     --input-focus-border: #63b3ed;
+    
+    /* Colores Dark */
+    --color-blue: #63b3ed;
+    --color-green: #48bb78;
+    --color-red: #fc8181;
 
     /* Botones Dark */
-    --btn-primary-bg: #63b3ed;
+    --btn-primary-bg: var(--color-blue);
     --btn-primary-text: #1a202c;
-    --btn-danger-bg: #fc8181;
+    --btn-danger-bg: var(--color-red);
     --btn-danger-text: #1a202c;
     --btn-secondary-bg: #4a5568;
     --btn-secondary-text: #e2e8f0;
@@ -98,12 +108,11 @@ body {
 .sidebar-header {
     display: flex;
     align-items: center;
-    justify-content: space-between; /* <-- MODIFICADO */
+    justify-content: space-between; 
     gap: 0.75rem;
     font-size: 1.25rem;
     font-weight: 700;
 }
-/* Nuevo grupo para el logo */
 .sidebar-logo-group {
     display: flex;
     align-items: center;
@@ -112,9 +121,8 @@ body {
 .logo-icon { 
     color: var(--btn-primary-bg); 
 }
-/* Botón 'X' de cerrar */
 #sidebar-close-btn {
-    display: none; /* Oculto en desktop */
+    display: none; 
     width: 44px;
     height: 44px;
     padding: 0;
@@ -261,6 +269,59 @@ body {
     color: #38a169; 
 }
 
+/* Tarjeta de Estado de Conexión */
+.status-box {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.75rem;
+    font-weight: 600;
+    font-size: 0.9rem;
+    padding: 0.75rem 1.25rem;
+    border-radius: 8px;
+    border: 1px solid transparent;
+}
+.status-box .material-icons-outlined {
+    font-size: 1.25rem;
+}
+.status-loading {
+    color: var(--color-blue);
+    background-color: var(--btn-tertiary-bg);
+    border-color: var(--color-blue);
+}
+.status-success {
+    color: var(--color-green);
+    background-color: #f0fff4;
+    border-color: var(--color-green);
+}
+.status-error {
+    color: var(--color-red);
+    background-color: #fff5f5;
+    border-color: var(--color-red);
+}
+.lp-dark .status-success {
+    background-color: #2f4538;
+}
+.lp-dark .status-error {
+    background-color: #4b3232;
+}
+@keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+.status-loading .material-icons-outlined {
+    animation: spin 1.5s linear infinite;
+}
+
+/* --- Tarjeta de Migración --- */
+.migration-card {
+    border-color: var(--color-red);
+    background-color: #fff5f5;
+}
+.lp-dark .migration-card {
+    background-color: #4b3232;
+}
+
+
 /* Formularios */
 .form-grid {
     display: grid;
@@ -300,21 +361,21 @@ body {
     box-shadow: 0 0 0 2px rgba(74, 144, 226, 0.2);
 }
 
-/* --- Estilos de Validación --- */
+/* Estilos de Validación */
 .text-input.is-valid {
-    border-color: #38a169; 
+    border-color: var(--color-green); 
     background-color: #f0fff4; 
 }
 .text-input.is-invalid {
-    border-color: #e53e3e; 
+    border-color: var(--color-red); 
     background-color: #fff5f5; 
 }
 .lp-dark .text-input.is-valid {
-    border-color: #48bb78; 
+    border-color: var(--color-green); 
     background-color: #2f4538; 
 }
 .lp-dark .text-input.is-invalid {
-    border-color: #fc8181; 
+    border-color: var(--color-red); 
     background-color: #4b3232; 
 }
 
@@ -467,7 +528,7 @@ body {
     color: var(--text-color-secondary);
 }
 .search-feedback.error {
-    color: var(--btn-danger-bg);
+    color: var(--color-red);
 }
 
 /* --- Lista de Aplicaciones --- */
@@ -538,10 +599,10 @@ body {
     min-height: 1.2em;
 }
 .status-message.success { 
-    color: #38a169; 
+    color: var(--color-green); 
 }
 .status-message.error { 
-    color: #e53e3e; 
+    color: var(--color-red); 
 }
 
 /* Efecto Ripple (del JS) */
@@ -711,7 +772,7 @@ span.ripple {
     left: 50%;
     transform: translate(-50%, -50%);
     font-size: 2rem;
-    color: var(--btn-danger-bg);
+    color: var(--color-red);
     opacity: 0.5;
 }
 
@@ -739,22 +800,22 @@ span.ripple {
     
     /* --- Estilos Sidebar Móvil --- */
     .sidebar { 
-        transform: translateX(-100%); /* Oculto por defecto */
+        transform: translateX(-100%); 
         box-shadow: var(--shadow-md);
         border-right: none;
     }
     .app-layout.sidebar-open .sidebar {
-        transform: translateX(0); /* Mostrar */
+        transform: translateX(0); 
     }
     .app-layout.sidebar-closed .sidebar {
-        transform: translateX(-100%); /* Ocultar */
+        transform: translateX(-100%); 
     }
     
     #menu-toggle-btn {
-        display: grid; /* Mostrar botón hamburguesa */
+        display: grid; 
     }
     #sidebar-close-btn {
-        display: grid; /* Mostrar botón 'X' */
+        display: grid; 
     }
     /* --- Fin Estilos Sidebar Móvil --- */
 
