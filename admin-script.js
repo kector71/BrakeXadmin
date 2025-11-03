@@ -10,13 +10,12 @@ const {
     deleteDoc,
     onSnapshot,
     signInAnonymously,
-    onAuthStateChanged,
-    writeBatch
+    onAuthStateChanged // <-- ¡CORREGIDO! Faltaba esta línea.
 } = window.firebaseTools;
 
 
 document.addEventListener('DOMContentLoaded', () => {
-    console.log("Admin script 2.0 loaded. DOM ready.");
+    console.log("Admin script 2.1 FINAL loaded. DOM ready.");
 
     // ----- VARIABLES GLOBALES -----
     let allPadsCache = []; 
@@ -27,7 +26,6 @@ document.addEventListener('DOMContentLoaded', () => {
     let autocompleteData = {}; 
     let imagePreviewTimeout; 
     let searchTimeout; 
-    let migrationFile = null; 
 
     // --- Expresiones Regulares para Validación ---
     const anioRegex = /^(?:(\d{2}|\d{4})(?:-(\d{2}|\d{4}))?)$/;
@@ -39,27 +37,16 @@ document.addEventListener('DOMContentLoaded', () => {
     try {
         console.log("Attempting to obtain DOM elements...");
         els = {
-            // Elementos Menú Móvil
-            appLayout: document.querySelector('.app-layout'),
-            menuToggleBtn: document.getElementById('menu-toggle-btn'),
-            sidebarOverlay: document.getElementById('sidebar-overlay'),
-            sidebarCloseBtn: document.getElementById('sidebar-close-btn'), 
-
+            // Elementos Menú Móvil ELIMINADOS
+            
             navItems: document.querySelectorAll('.nav-item'),
             contentSections: document.querySelectorAll('.content-section'),
             pageTitle: document.getElementById('page-title'),
             padCountDashboard: document.getElementById('pad-count-dashboard'),
             appsTotalDashboard: document.getElementById('apps-total-dashboard'),
             
-            // --- Nuevos elementos de Conexión ---
             connectionStatus: document.getElementById('connection-status'),
             connectionStatusText: document.getElementById('connection-status-text'),
-
-            // --- Nuevos elementos de Migración ---
-            migrationFileInput: document.getElementById('migration-file-input'),
-            migrationFileName: document.getElementById('migration-file-name'),
-            migrationUploadBtn: document.getElementById('migration-upload-btn'),
-            migrationStatus: document.getElementById('migration-status'),
 
             searchRef: document.getElementById('search-ref'),
             searchType: document.getElementById('search-type'), 
@@ -92,6 +79,11 @@ document.addEventListener('DOMContentLoaded', () => {
             savePadBtn: document.getElementById('save-pad-btn'),
             deletePadBtn: document.getElementById('delete-pad-btn'),
             duplicatePadBtn: document.getElementById('duplicate-pad-btn'), 
+            
+            darkBtn: document.getElementById('darkBtn'),
+            sunIcon: document.querySelector('.lp-icon-sun'),
+            moonIcon: document.querySelector('.lp-icon-moon'),
+
             savePadStatus: document.getElementById('save-pad-status'),
             confirmModalOverlay: document.getElementById('confirm-modal-overlay'),
             confirmModalContent: document.getElementById('confirm-modal-content'),
@@ -103,8 +95,8 @@ document.addEventListener('DOMContentLoaded', () => {
             seriesList: document.getElementById('series-list') 
         };
         
-        if (!els.appLayout || !els.menuToggleBtn || !els.sidebarOverlay || !els.sidebarCloseBtn || !els.marcasList || !els.connectionStatus || !els.migrationUploadBtn) {
-             throw new Error("Elementos esenciales del layout o formulario no encontrados (appLayout, menuToggleBtn, migrationUploadBtn, etc).");
+        if (!els.pageTitle || !els.searchType || !els.deletePadBtn || !els.duplicatePadBtn || !els.imagePreviewContainer || !els.marcasList || !els.darkBtn) {
+             throw new Error("Elementos esenciales del layout o formulario no encontrados.");
         }
         console.log("DOM elements obtained successfully.");
     } catch (error) {
@@ -115,15 +107,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // ----- FUNCIONES -----
     
-    // --- Funciones Menú Móvil ---
-    const openSidebar = () => {
-        if (els.appLayout) els.appLayout.classList.replace('sidebar-closed', 'sidebar-open');
-    };
-    const closeSidebar = () => {
-        if (els.appLayout) els.appLayout.classList.replace('sidebar-open', 'sidebar-closed');
-    };
-
-
     // --- Modal de Confirmación ---
     let confirmResolve = null;
     const showCustomConfirm = (message, title = "Confirmar Acción", confirmText = "Confirmar", confirmClass = "btn-danger") => {
@@ -170,8 +153,6 @@ document.addEventListener('DOMContentLoaded', () => {
             console.error(`Sección con ID '${sectionId}' no encontrada. Volviendo a dashboard.`);
             setActiveSection('dashboard');
         }
-        
-        closeSidebar(); 
     };
     
     // --- Previsualización de Imágenes ---
@@ -260,7 +241,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
-    // --- BÚSQUEDA (Función movida aquí) ---
+    // --- BÚSQUEDA ---
     const updateSearchPlaceholder = () => {
         if (!els.searchType || !els.searchRef) return;
         const type = els.searchType.value;
@@ -538,163 +519,12 @@ document.addEventListener('DOMContentLoaded', () => {
         button.insertBefore(circle, button.firstChild);
         circle.addEventListener('animationend', () => { if (circle.parentNode) circle.remove(); }, { once: true });
     };
-    
-    
-    // --- FUNCIÓN DE MIGRACIÓN DE DATOS (Parse) ---
-    const parseFileToPads = (file) => {
-        return new Promise((resolve, reject) => {
-            if (!file) return reject(new Error("No se seleccionó ningún archivo."));
-
-            // Lógica para JSON
-            if (file.name.endsWith('.json')) {
-                const reader = new FileReader();
-                reader.onload = (e) => {
-                    try {
-                        let dataToParse = e.target.result;
-                        if (dataToParse.startsWith('[') && dataToParse.endsWith(']') && dataToParse.includes('},\n{')) {
-                             dataToParse = dataToParse.replace(/},\n{/g, '},{');
-                        }
-                        const data = JSON.parse(dataToParse);
-                        if (!Array.isArray(data)) throw new Error("JSON no es un array.");
-                        resolve(data);
-                    } catch (err) {
-                        reject(err);
-                    }
-                };
-                reader.onerror = (err) => reject(new Error("Error al leer el archivo JSON."));
-                reader.readAsText(file);
-            }
-            // Lógica para Excel
-            else if (file.name.endsWith('.xlsx') || file.name.endsWith('.xls')) {
-                if (typeof XLSX === 'undefined') {
-                    return reject(new Error("La librería XLSX no se pudo cargar. Revisa la <script> tag."));
-                }
-                const reader = new FileReader();
-                reader.onload = (e) => {
-                    try {
-                        const data = e.target.result;
-                        const workbook = XLSX.read(data, { type: 'array' });
-                        const sheetName = workbook.SheetNames[0];
-                        const worksheet = workbook.Sheets[sheetName];
-                        const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: "" });
-
-                        if (jsonData.length < 2) throw new Error("El archivo Excel está vacío.");
-                        
-                        const headers = jsonData[0].map(h => String(h).trim());
-                        const rows = jsonData.slice(1);
-                        
-                        const colMap = {
-                            ref: headers.indexOf('ref'),
-                            fmsi: headers.indexOf('fmsi'),
-                            posicion: headers.indexOf('posición'),
-                            marca: headers.indexOf('marca'),
-                            serie: headers.indexOf('serie'),
-                            anio: headers.indexOf('año'),
-                            litros: headers.indexOf('litros'),
-                            espec: headers.indexOf('especificacion')
-                        };
-
-                        if (colMap.ref === -1 || colMap.marca === -1 || colMap.serie === -1 || colMap.anio === -1) {
-                            throw new Error("El Excel no tiene las columnas requeridas. Se necesita: 'ref', 'marca', 'serie', 'año'.");
-                        }
-
-                        const pads_agrupadas = {};
-                        const toTitleCase = (str) => !str ? "" : str.toLowerCase().replace(/\b\w/g, char => char.toUpperCase());
-                        const formatYearJS = (anio_str) => {
-                            if (!anio_str) return "";
-                            const partes = anio_str.split('-').map(p => {
-                                const limpia = p.trim();
-                                if (limpia.length === 4 && /^(19|20)\d{2}$/.test(limpia)) return limpia.substring(2);
-                                if (limpia.length === 2 && /^\d{2}$/.test(limpia)) return limpia;
-                                return limpia;
-                            });
-                            const unidos = partes.filter(Boolean).join('-');
-                            const partidos = unidos.split('-');
-                            return (partidos.length === 2 && partidos[0] === partidos[1]) ? partidos[0] : unidos;
-                        };
-                        
-                        for (const fila of rows) {
-                            const ref_id_val = String(fila[colMap.ref] || '').trim();
-                            if (!ref_id_val) continue;
-
-                            const marca_app = toTitleCase(String(fila[colMap.marca] || '').trim());
-                            const serie_app = toTitleCase(String(fila[colMap.serie] || '').trim());
-                            const fmsi_val = String(fila[colMap.fmsi] || '').trim();
-                            const pos_excel = String(fila[colMap.posicion] || '').trim();
-                            let pos_json = "Delantera";
-                            if (pos_excel.toLowerCase().includes("del")) pos_json = "Delantera";
-                            else if (pos_excel.toLowerCase().includes("tras")) pos_json = "Trasera";
-
-                            const app_actual = {
-                                "marca": marca_app,
-                                "serie": serie_app,
-                                "litros": String(fila[colMap.litros] || '').trim(),
-                                "año": formatYearJS(String(fila[colMap.anio] || '').trim()),
-                                "especificacion": String(fila[colMap.espec] || '').trim()
-                            };
-
-                            if (!(ref_id_val in pads_agrupadas)) {
-                                const ref_id_con_inc = `${ref_id_val}INC`;
-                                pads_agrupadas[ref_id_val] = {
-                                    "ref": [ref_id_con_inc], "oem": [], "fmsi": [fmsi_val].filter(Boolean),
-                                    "posición": pos_json, "medidas": [], "imagenes": [],
-                                    "aplicaciones": [app_actual]
-                                };
-                            } else {
-                                pads_agrupadas[ref_id_val]["aplicaciones"].push(app_actual);
-                                if (fmsi_val && !pads_agrupadas[ref_id_val]["fmsi"].includes(fmsi_val)) {
-                                    pads_agrupadas[ref_id_val]["fmsi"].push(fmsi_val);
-                                }
-                            }
-                        }
-                        resolve(Object.values(pads_agrupadas));
-
-                    } catch (err) {
-                        reject(err);
-                    }
-                };
-                reader.onerror = (err) => reject(new Error("Error al leer el archivo Excel."));
-                reader.readAsArrayBuffer(file);
-            }
-            else {
-                reject(new Error("Tipo de archivo no soportado. Usa .json o .xlsx"));
-            }
-        });
-    };
-
-    const uploadPadsToFirebase = async (padsToUpload) => {
-        if (!Array.isArray(padsToUpload) || padsToUpload.length === 0) {
-            throw new Error("No hay pastillas para subir.");
-        }
-
-        const batch = writeBatch(db);
-        let count = 0;
-
-        for (const pad of padsToUpload) {
-            if (pad.ref && Array.isArray(pad.ref) && pad.ref.length > 0) {
-                const docId = pad.ref[0]; 
-                const docRef = doc(db, "pastillas", docId);
-                batch.set(docRef, pad);
-                count++;
-            } else {
-                console.warn("Se ignoró una pastilla sin 'ref' válida:", pad);
-            }
-        }
-
-        await batch.commit(); 
-        return count; 
-    };
-    // --- ▲▲▲ FIN FUNCIÓN DE MIGRACIÓN ▲▲▲ ---
-
 
     // ----- EVENT LISTENERS -----
     try {
         console.log("Adding event listeners...");
 
-        // --- Listeners Menú Móvil ---
-        els.menuToggleBtn.addEventListener('click', openSidebar); 
-        els.sidebarOverlay.addEventListener('click', closeSidebar); 
-        els.sidebarCloseBtn.addEventListener('click', closeSidebar); 
+        // --- Listeners Menú Móvil ELIMINADOS ---
 
         // Modales
         els.confirmModalBtnYes?.addEventListener('click', () => hideCustomConfirm(true));
@@ -712,51 +542,7 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         });
 
-        // --- LISTENERS DE MIGRACIÓN ---
-        els.migrationFileInput.addEventListener('change', (e) => {
-            const file = e.target.files?.[0];
-            if (file) {
-                migrationFile = file;
-                els.migrationFileName.textContent = file.name;
-            } else {
-                migrationFile = null;
-                els.migrationFileName.textContent = "Ningún archivo.";
-            }
-        });
-
-        els.migrationUploadBtn.addEventListener('click', async () => {
-            if (!migrationFile) {
-                showStatus(els.migrationStatus, "Selecciona un archivo primero.", true);
-                return;
-            }
-
-            const confirmed = await showCustomConfirm(
-                `¿Estás SEGURO? Esto sobrescribirá TODOS los datos en Firebase con el contenido de '${migrationFile.name}'.`,
-                "Confirmar Migración",
-                "Sí, Sobrescribir Todo",
-                "btn-danger"
-            );
-
-            if (!confirmed) return;
-
-            showStatus(els.migrationStatus, `Procesando archivo '${migrationFile.name}'...`, false, 20000);
-            
-            try {
-                const pads = await parseFileToPads(migrationFile);
-                showStatus(els.migrationStatus, `Archivo procesado. Subiendo ${pads.length} pastillas a Firebase...`, false, 20000);
-                
-                const uploadedCount = await uploadPadsToFirebase(pads);
-                
-                showStatus(els.migrationStatus, `¡Éxito! ${uploadedCount} pastillas subidas a Firebase.`, false);
-                migrationFile = null;
-                els.migrationFileName.textContent = "Ningún archivo.";
-                els.migrationFileInput.value = null;
-
-            } catch (err) {
-                console.error("Error en la migración:", err);
-                showStatus(els.migrationStatus, `Error: ${err.message}`, true, 10000);
-            }
-        });
+        // --- Listeners de Migración ELIMINADOS ---
 
         // --- BÚSQUEDA ---
         els.searchBtn.addEventListener('click', performSearch);
@@ -979,7 +765,7 @@ document.addEventListener('DOMContentLoaded', () => {
             els.padMedidas.addEventListener('input', () => validateField(els.padMedidas, medidasRegex));
         }
 
-        // Modo Oscuro
+        // --- LISTENER MODO OSCURO (CORREGIDO) ---
         els.darkBtn.addEventListener('click', (e) => {
             createRippleEffect(e);
             const isDark = document.body.classList.toggle('lp-dark');

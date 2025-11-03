@@ -16,7 +16,7 @@
         // Importa las funciones que necesitas
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
         import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-        import { getFirestore, collection, doc, setDoc, deleteDoc, onSnapshot, writeBatch } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js"; // Añadido writeBatch
+        import { getFirestore, collection, doc, setDoc, deleteDoc, onSnapshot, writeBatch } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js"; 
 
         // Tu configuración de Firebase
         const firebaseConfig = {
@@ -44,47 +44,37 @@
             onSnapshot,
             signInAnonymously,
             onAuthStateChanged,
-            writeBatch // <-- AÑADIDO
+            writeBatch 
         };
     </script>
     </head>
 <body>
-
-    <div class="app-layout sidebar-closed">
+    
+    <div class="app-container">
         
-        <aside class="sidebar">
-            <div class="sidebar-header">
-                <div class="sidebar-logo-group">
-                    <span class="material-icons-outlined logo-icon">speed</span>
-                    <span class="logo-text">Brake X Admin 2.0</span> 
-                </div>
-                <button class="material-btn" id="sidebar-close-btn" aria-label="Cerrar menú">
-                    <span class="material-icons-outlined">close</span>
-                </button>
-            </div>
-
-            <nav class="nav-menu">
-                <a href="#" class="nav-item active" data-section="dashboard">
-                    <span class="material-icons-outlined">dashboard</span>
-                    <span>Dashboard</span>
-                </a>
-                <a href="#" class="nav-item" data-section="edit-pad">
-                    <span class="material-icons-outlined">edit_note</span>
-                    <span>Añadir / Editar</span>
-                </a>
-            </nav>
-        </aside>
-
         <main class="main-content">
+            
             <header class="content-header">
-                <button class="material-btn" id="menu-toggle-btn" aria-label="Abrir menú">
-                    <span class="material-icons-outlined">menu</span>
-                </button>
-                <h1 id="page-title">Dashboard</h1>
-            </header>
-
+                <div class="header-left">
+                    <div class="header-logo-group">
+                        <span class="material-icons-outlined logo-icon">speed</span>
+                        <span class="logo-text">Brake X Admin 2.1</span>
+                    </div>
+                    <nav class="nav-menu">
+                        <a href="#" class="nav-item active" data-section="dashboard">
+                            <span class="material-icons-outlined">dashboard</span>
+                            <span>Dashboard</span>
+                        </a>
+                        <a href="#" class="nav-item" data-section="edit-pad">
+                            <span class="material-icons-outlined">edit_note</span>
+                            <span>Añadir / Editar</span>
+                        </a>
+                    </nav>
+                </div>
+                </header>
             <div class="content-wrapper">
-
+                
+                <h1 id="page-title">Dashboard</h1>
                 <div id="dashboard" class="content-section active">
                     <div class="card-grid cols-2">
                         <div class="stat-card accent-blue">
@@ -111,23 +101,7 @@
                             <span id="connection-status-text">Conectando...</span>
                         </div>
                     </div>
-
-                    <div class="card migration-card">
-                        <h2 class="card-title">Herramienta de Migración (Solo 1 vez)</h2>
-                        <p class="card-description">Usa esto para subir tu archivo `data.json` o `JSON.xlsx` antiguo a Firebase. Esto **sobrescribirá** los datos en la nube.</p>
-                        <div class="file-upload-wrapper">
-                            <input type="file" id="migration-file-input" accept=".json, .xlsx, .xls" class="file-input">
-                            <label for="migration-file-input" class="btn btn-secondary file-btn">
-                                <span class="material-icons-outlined">upload_file</span> Seleccionar archivo...
-                            </label>
-                            <span id="migration-file-name" class="file-name">Ningún archivo.</span>
-                        </div>
-                        <button id="migration-upload-btn" class="btn btn-danger" type="button" style="margin-top: 1rem;">
-                            <span class="material-icons-outlined">upload</span> Subir y Sobrescribir Todo
-                        </button>
-                        <span id="migration-status" class="status-message"></span>
-                    </div>
-                    </div>
+                </div>
 
                 <div id="edit-pad" class="content-section">
                     
@@ -159,7 +133,7 @@
                                    <input type="hidden" id="edit-index" value="-1">
                                     <div class="form-group span-2"> <label for="pad-ref" class="input-label">Referencias (separadas por coma)</label> <input type="text" id="pad-ref" class="text-input" required> </div>
                                     <div class="form-group"> <label for="pad-oem" class="input-label">OEM (separados por coma)</label> <input type="text" id="pad-oem" class="text-input"> </div>
-                                    <div class="form-group"> <label for="pad-fmsi" class="input-label">FMSI (separados por coma)</label> <input type="text" id="pad-fmsi" class="text-input"> </div>
+                                    <div class="form-group"> <label for="pad-fmsi" class="input-label">FMSI (separadas por coma)</label> <input type="text" id="pad-fmsi" class="text-input"> </div>
                                     <div class="form-group"> <label for="pad-posicion" class="input-label">Posición</label> <select id="pad-posicion" class="select-input"> <option value="Delantera">Delantera</option> <option value="Trasera">Trasera</option> </select> </div>
                                     
                                     <div class="form-group"> 
@@ -262,9 +236,6 @@
         </div>
     </div>
     
-    <div id="sidebar-overlay"></div>
-
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <script type="module" src="admin-script.js"></script> 
 </body>
 </html>
