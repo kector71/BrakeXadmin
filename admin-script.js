@@ -27,7 +27,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let autocompleteData = {}; 
     let imagePreviewTimeout; 
     let searchTimeout; 
-    let migrationFile = null; // <-- Para el archivo de migración
+    let migrationFile = null; 
 
     // --- Expresiones Regulares para Validación ---
     const anioRegex = /^(?:(\d{2}|\d{4})(?:-(\d{2}|\d{4}))?)$/;
@@ -55,12 +55,11 @@ document.addEventListener('DOMContentLoaded', () => {
             connectionStatus: document.getElementById('connection-status'),
             connectionStatusText: document.getElementById('connection-status-text'),
 
-            // --- ▼▼▼ NUEVOS ELEMENTOS DE MIGRACIÓN ▼▼▼ ---
+            // --- Nuevos elementos de Migración ---
             migrationFileInput: document.getElementById('migration-file-input'),
             migrationFileName: document.getElementById('migration-file-name'),
             migrationUploadBtn: document.getElementById('migration-upload-btn'),
             migrationStatus: document.getElementById('migration-status'),
-            // --- ▲▲▲ FIN ELEMENTOS DE MIGRACIÓN ▲▲▲ ---
 
             searchRef: document.getElementById('search-ref'),
             searchType: document.getElementById('search-type'), 
@@ -261,6 +260,85 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
+    // --- BÚSQUEDA (Función movida aquí) ---
+    const updateSearchPlaceholder = () => {
+        if (!els.searchType || !els.searchRef) return;
+        const type = els.searchType.value;
+        switch(type) {
+            case 'ref':
+                els.searchRef.placeholder = "Ej: 7104INC";
+                break;
+            case 'fmsi':
+                els.searchRef.placeholder = "Ej: D1047";
+                break;
+            case 'oem':
+                els.searchRef.placeholder = "Ej: 123456789";
+                break;
+            case 'app':
+                els.searchRef.placeholder = "Ej: Chevrolet Spark";
+                break;
+        }
+    };
+
+    const performSearch = () => {
+        const query = els.searchRef.value.trim().toLowerCase();
+        const searchType = els.searchType.value;
+
+        if (query.length < 2) { 
+            els.searchResults.innerHTML = '<div class="search-feedback error">Escribe al menos 2 caracteres.</div>';
+            if (query.length === 0) els.searchResults.innerHTML = '';
+            return;
+        }
+        if (!Array.isArray(allPadsCache) || allPadsCache.length === 0) {
+            els.searchResults.innerHTML = '<div class="search-feedback error">La base de datos está vacía.</div>';
+            return;
+        }
+
+        const results = allPadsCache.reduce((acc, pad) => { 
+            let foundMatch = null;
+            try {
+                switch(searchType) {
+                    case 'ref':
+                        foundMatch = (pad.ref || []).find(r => r.toLowerCase().includes(query));
+                        break;
+                    case 'fmsi':
+                        foundMatch = (pad.fmsi || []).find(f => f.toLowerCase().includes(query));
+                        break;
+                    case 'oem':
+                        foundMatch = (pad.oem || []).find(o => o.toLowerCase().includes(query));
+                        break;
+                    case 'app':
+                        const foundApp = (pad.aplicaciones || []).find(app => 
+                            (app.marca && app.marca.toLowerCase().includes(query)) || 
+                            (app.serie && app.serie.toLowerCase().includes(query))
+                        );
+                        if (foundApp) {
+                            foundMatch = `${foundApp.marca} ${foundApp.serie}`;
+                        }
+                        break;
+                }
+            } catch (e) { console.error("Error buscando en pastilla:", e, pad); }
+
+             if (foundMatch) {
+                 acc.push({ pad, docId: pad.id, foundText: foundMatch }); 
+             }
+             return acc;
+        }, []); 
+
+        if (results.length === 0) {
+            els.searchResults.innerHTML = `<div class="search-feedback">No se encontró nada para "${query}".</div>`;
+        } else {
+            els.searchResults.innerHTML = results.map(r => `
+                <div class="search-result-item">
+                    <div>
+                        <span class="search-result-match">${r.foundText}</span>
+                        <span class="search-result-context">(${searchType.toUpperCase()} / ${r.pad.ref[0] || 'N/A'})</span>
+                    </div>
+                    <button type="button" class="btn btn-secondary edit-btn" data-id="${r.docId}">Cargar</button>
+                </div>
+            `).join(''); 
+        }
+    };
 
     // --- Resets de Formularios ---
     const resetAppForm = () => {
@@ -441,7 +519,28 @@ document.addEventListener('DOMContentLoaded', () => {
         if (els.padRef) els.padRef.focus();
     };
 
-    // --- ▼▼▼ FUNCIÓN DE MIGRACIÓN DE DATOS ▼▼▼ ---
+    // --- Efecto Ripple ---
+    const createRippleEffect = (event) => {
+        const button = event.currentTarget;
+        if (!button || typeof button.getBoundingClientRect !== 'function') return;
+        const circle = document.createElement('span');
+        const diameter = Math.max(button.clientWidth, button.clientHeight);
+        const radius = diameter / 2;
+        const rect = button.getBoundingClientRect();
+        circle.style.width = circle.style.height = `${diameter}px`;
+        const rippleX = event.clientX - rect.left - radius;
+        const rippleY = event.clientY - rect.top - radius;
+        circle.style.left = `${rippleX}px`;
+        circle.style.top = `${rippleY}px`;
+        circle.classList.add('ripple');
+        const existingRipple = button.querySelector('.ripple');
+        if (existingRipple) existingRipple.remove();
+        button.insertBefore(circle, button.firstChild);
+        circle.addEventListener('animationend', () => { if (circle.parentNode) circle.remove(); }, { once: true });
+    };
+    
+    
+    // --- FUNCIÓN DE MIGRACIÓN DE DATOS (Parse) ---
     const parseFileToPads = (file) => {
         return new Promise((resolve, reject) => {
             if (!file) return reject(new Error("No se seleccionó ningún archivo."));
@@ -465,10 +564,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 reader.onerror = (err) => reject(new Error("Error al leer el archivo JSON."));
                 reader.readAsText(file);
             }
-            // Lógica para Excel (reutilizada de antes)
+            // Lógica para Excel
             else if (file.name.endsWith('.xlsx') || file.name.endsWith('.xls')) {
                 if (typeof XLSX === 'undefined') {
-                    return reject(new Error("La librería XLSX no se pudo cargar."));
+                    return reject(new Error("La librería XLSX no se pudo cargar. Revisa la <script> tag."));
                 }
                 const reader = new FileReader();
                 reader.onload = (e) => {
@@ -568,13 +667,12 @@ document.addEventListener('DOMContentLoaded', () => {
             throw new Error("No hay pastillas para subir.");
         }
 
-        // Usamos un "Batch" para subir todos los datos en un solo lote. Es más rápido.
         const batch = writeBatch(db);
         let count = 0;
 
         for (const pad of padsToUpload) {
             if (pad.ref && Array.isArray(pad.ref) && pad.ref.length > 0) {
-                const docId = pad.ref[0]; // Usamos la primera referencia como ID
+                const docId = pad.ref[0]; 
                 const docRef = doc(db, "pastillas", docId);
                 batch.set(docRef, pad);
                 count++;
@@ -583,8 +681,8 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
 
-        await batch.commit(); // Enviamos el lote a Firebase
-        return count; // Devolvemos cuántas se subieron
+        await batch.commit(); 
+        return count; 
     };
     // --- ▲▲▲ FIN FUNCIÓN DE MIGRACIÓN ▲▲▲ ---
 
@@ -614,7 +712,7 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         });
 
-        // --- ▼▼▼ LISTENERS DE MIGRACIÓN ▼▼▼ ---
+        // --- LISTENERS DE MIGRACIÓN ---
         els.migrationFileInput.addEventListener('change', (e) => {
             const file = e.target.files?.[0];
             if (file) {
@@ -659,89 +757,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 showStatus(els.migrationStatus, `Error: ${err.message}`, true, 10000);
             }
         });
-        // --- ▲▲▲ FIN LISTENERS DE MIGRACIÓN ▲▲▲ ---
-
 
         // --- BÚSQUEDA ---
-        const updateSearchPlaceholder = () => {
-            if (!els.searchType || !els.searchRef) return;
-            const type = els.searchType.value;
-            switch(type) {
-                case 'ref':
-                    els.searchRef.placeholder = "Ej: 7104INC";
-                    break;
-                case 'fmsi':
-                    els.searchRef.placeholder = "Ej: D1047";
-                    break;
-                case 'oem':
-                    els.searchRef.placeholder = "Ej: 123456789";
-                    break;
-                case 'app':
-                    els.searchRef.placeholder = "Ej: Chevrolet Spark";
-                    break;
-            }
-        };
-
-        const performSearch = () => {
-            const query = els.searchRef.value.trim().toLowerCase();
-            const searchType = els.searchType.value;
-
-            if (query.length < 2) { 
-                els.searchResults.innerHTML = '<div class="search-feedback error">Escribe al menos 2 caracteres.</div>';
-                if (query.length === 0) els.searchResults.innerHTML = '';
-                return;
-            }
-            if (!Array.isArray(allPadsCache) || allPadsCache.length === 0) {
-                els.searchResults.innerHTML = '<div class="search-feedback error">La base de datos está vacía.</div>';
-                return;
-            }
-
-            const results = allPadsCache.reduce((acc, pad) => { 
-                let foundMatch = null;
-                try {
-                    switch(searchType) {
-                        case 'ref':
-                            foundMatch = (pad.ref || []).find(r => r.toLowerCase().includes(query));
-                            break;
-                        case 'fmsi':
-                            foundMatch = (pad.fmsi || []).find(f => f.toLowerCase().includes(query));
-                            break;
-                        case 'oem':
-                            foundMatch = (pad.oem || []).find(o => o.toLowerCase().includes(query));
-                            break;
-                        case 'app':
-                            const foundApp = (pad.aplicaciones || []).find(app => 
-                                (app.marca && app.marca.toLowerCase().includes(query)) || 
-                                (app.serie && app.serie.toLowerCase().includes(query))
-                            );
-                            if (foundApp) {
-                                foundMatch = `${foundApp.marca} ${foundApp.serie}`;
-                            }
-                            break;
-                    }
-                } catch (e) { console.error("Error buscando en pastilla:", e, pad); }
-
-                 if (foundMatch) {
-                     acc.push({ pad, docId: pad.id, foundText: foundMatch }); 
-                 }
-                 return acc;
-            }, []); 
-
-            if (results.length === 0) {
-                els.searchResults.innerHTML = `<div class="search-feedback">No se encontró nada para "${query}".</div>`;
-            } else {
-                els.searchResults.innerHTML = results.map(r => `
-                    <div class="search-result-item">
-                        <div>
-                            <span class="search-result-match">${r.foundText}</span>
-                            <span class="search-result-context">(${searchType.toUpperCase()} / ${r.pad.ref[0] || 'N/A'})</span>
-                        </div>
-                        <button type="button" class="btn btn-secondary edit-btn" data-id="${r.docId}">Cargar</button>
-                    </div>
-                `).join(''); 
-            }
-        };
-        
         els.searchBtn.addEventListener('click', performSearch);
         els.searchType.addEventListener('change', updateSearchPlaceholder); 
         
@@ -752,7 +769,6 @@ document.addEventListener('DOMContentLoaded', () => {
         els.searchRef.addEventListener('keypress', (e) => {
             if (e.key === 'Enter') { e.preventDefault(); clearTimeout(searchTimeout); performSearch(); }
         });
-        // --- FIN BÚSQUEDA ---
 
 
         // Clic Cargar Resultados
