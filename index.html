@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <!-- ... (tu head no cambia) ... -->
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Brake X Admin</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Outlined" rel="stylesheet">
+    <link rel="stylesheet" href="admin-styles.css">
+    <script type="module">
+        // ... (tu script de firebase-config no cambia) ...
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+        import { 
+            getAuth, 
+            onAuthStateChanged,
+            signInWithEmailAndPassword,
+            signOut
+        } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+        import { getFirestore, collection, doc, setDoc, deleteDoc, onSnapshot, writeBatch } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js"; 
+        const firebaseConfig = {
+          apiKey: "AIzaSyBms6_ujBJeVOcMbnxCxS9_7R6xQSpAOI8",
+          authDomain: "brakexadmin.firebaseapp.com",
+          projectId: "brakexadmin",
+          storageBucket: "brakexadmin.firebasestorage.app",
+          messagingSenderId: "799264562947",
+          appId: "1:799264562947:web:52d860ae41a5c4b8f75336"
+        };
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+        window.firebaseTools = {
+            auth,
+            db,
+            collection,
+            doc,
+            setDoc,
+            deleteDoc,
+            onSnapshot,
+            onAuthStateChanged,
+            writeBatch,
+            signInWithEmailAndPassword,
+            signOut
+        };
+    </script>
+    </head>
+<body>
+    
+    <!-- Contenedor de Login -->
+    <div id="login-container" class="login-container">
+        <div class="card login-card">
+            <div class="header-logo-group" style="justify-content: center; margin-bottom: 1.5rem;">
+                <span class="material-icons-outlined logo-icon">speed</span>
+                <span class="logo-text">Brake X Admin</span>
+            </div>
+            <form id="login-form" class="form-grid" style="grid-template-columns: 1fr;" onsubmit="return false;">
+                <div class="form-group">
+                    <label for="login-email" class="input-label">Email</label>
+                    <input type="email" id="login-email" class="text-input" required>
+                </div>
+                
+                <!-- ============================================= -->
+                <!--  CAMBIO: Ver/Ocultar Contraseña             -->
+                <!-- ============================================= -->
+                <div class="form-group">
+                    <label for="login-password" class="input-label">Contraseña</label>
+                    <div class="input-wrapper-relative"> 
+                        <input type="password" id="login-password" class="text-input" required>
+                        <button type="button" id="login-password-toggle" class="btn-icon-toggle" aria-label="Mostrar contraseña">
+                            <span class="material-icons-outlined">visibility</span>
+                        </button>
+                    </div>
+                </div>
+                <!-- ============================================= -->
+                <!--  FIN DEL CAMBIO                             -->
+                <!-- ============================================= -->
+                
+                <p id="login-message" class="status-message"></p>
+                <button id="login-btn" class="btn btn-primary" type="submit">
+                    <span class="material-icons-outlined">login</span>
+                    <span>Ingresar</span>
+                </button>
+            </form>
+        </div>
+    </div>
+
+
+    <!-- Panel principal -->
+    <div class="app-container" id="main-app-container" style="display: none;">
+        
+        <main class="main-content">
+            
+            <!-- ... (tu header no cambia) ... -->
+            <header class="content-header">
+                <div class="header-left">
+                    <div class="header-logo-group">
+                        <span class="material-icons-outlined logo-icon">speed</span>
+                        <span class="logo-text">Brake X Admin 2.1</span>
+                    </div>
+                    <nav class="nav-menu">
+                        <a href="#" class="nav-item active" data-section="dashboard">
+                            <span class="material-icons-outlined">dashboard</span>
+                            <span>Dashboard</span>
+                        </a>
+                        <a href="#" class="nav-item" data-section="edit-pad">
+                            <span class="material-icons-outlined">edit_note</span>
+                            <span>Añadir / Editar</span>
+                        </a>
+                    </nav>
+                </div>
+                <div class="header-right">
+                     <button id="logout-btn" class="btn btn-outline" type="button">
+                        <span class="material-icons-outlined">logout</span>
+                        <span>Cerrar Sesión</span>
+                    </button>
+                </div>
+            </header>
+            
+            <div class="content-wrapper">
+                
+                <!-- ... (tu dashboard no cambia) ... -->
+                <h1 id="page-title">Dashboard</h1>
+                <div id="dashboard" class="content-section active">
+                    <div class="card-grid cols-2">
+                        <div class="stat-card accent-blue">
+                            <span class="material-icons-outlined stat-icon">inventory_2</span>
+                            <div class="stat-info">
+                                <span class="stat-value" id="pad-count-dashboard">0</span>
+                                <span class="stat-label">Pastillas en DB</span>
+                            </div>
+                        </div>
+                        <div class="stat-card accent-green">
+                            <span class="material-icons-outlined stat-icon">app_registration</span>
+                               <div class="stat-info">
+                                <span class="stat-value" id="apps-total-dashboard">0</span>
+                                <span class="stat-label">Aplicaciones Totales</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card">
+                        <h2 class="card-title">Estado de la Base de Datos</h2>
+                        <p class="card-description">Los datos se cargan en tiempo real desde Firebase Firestore. Cualquier cambio se guardará automáticamente en la nube.</p>
+                        <div id="connection-status" class="status-box status-loading">
+                            <span class="material-icons-outlined">sync</span>
+                            <span id="connection-status-text">Conectando...</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="edit-pad" class="content-section">
+                    
+                    <div class="edit-layout-grid">
+                        
+                        <!-- ... (tu layout-col-main no cambia) ... -->
+                        <div class="layout-col-main">
+                            <div class="card">
+                                 <h2 class="card-title">Buscar Pastilla para Editar</h2>
+                                 <div class="form-group">
+                                     <label for="search-type" class="input-label">Buscar por:</label>
+                                     <div class="search-wrapper">
+                                         <select id="search-type" class="select-input search-type-select">
+                                             <option value="ref">Referencia</option>
+                                             <option value="fmsi">FMSI</option>
+                                             <option value="oem">OEM</option>
+                                             <option value="app">Aplicación</option>
+                                         </select>
+                                         <input type="text" id="search-ref" class="text-input" placeholder="Ej: 7104INC">
+                                         <button id="search-btn" class="btn btn-secondary search-btn" type="button"> <span class="material-icons-outlined">search</span> </button>
+                                     </div>
+                                 </div>
+                                 <div id="search-results" class="search-results-container"></div>
+                                 <button id="clear-search-btn" class="btn btn-outline" type="button" style="display: none; margin-top: 1rem;">Limpiar Formulario</button>
+                             </div>
+                            <div class="card">
+                                <h2 class="card-title" id="form-mode-title">Añadir Nueva Pastilla</h2>
+                                <form id="pad-form-main" class="form-grid" onsubmit="return false;">
+                                   <input type="hidden" id="edit-index" value="-1">
+                                    <div class="form-group span-2"> <label for="pad-ref" class="input-label">Referencias (separadas por coma)</label> <input type="text" id="pad-ref" class="text-input" required> </div>
+                                    <div class="form-group"> <label for="pad-oem" class="input-label">OEM (separados por coma)</label> <input type="text" id="pad-oem" class="text-input"> </div>
+                                    <div class="form-group"> <label for="pad-fmsi" class="input-label">FMSI (separadas por coma)</label> <input type="text" id="pad-fmsi" class="text-input"> </div>
+                                    <div class="form-group"> <label for="pad-posicion" class="input-label">Posición</label> <select id="pad-posicion" class="select-input"> <option value="Delantera">Delantera</option> <option value="Trasera">Trasera</option> </select> </div>
+                                    <div class="form-group"> 
+                                        <label for="pad-medidas" class="input-label">Medidas (separadas por coma)</label> 
+                                        <input type="text" id="pad-medidas" class="text-input" placeholder="Ej: 131.5 x 52.5"> 
+                                    </div>
+                                    <div class="form-group span-2">
+                                        <label for="pad-imagenes" class="input-label">URLs Imágenes (separadas por coma)</label>
+                                        <input type="text" id="pad-imagenes" class="text-input" placeholder="url1.jpg, url2.jpg, ...">
+                                        <div id="image-preview-container" class="image-preview-container"></div>
+                                    </div>
+                                </form>
+                            </div>
+                            <div class="card">
+                                <h2 class="card-title">Acciones Principales</h2>
+                                <p class="card-description">Guarda, duplica o elimina la pastilla completa.</p>
+                                <span id="save-pad-status" class="status-message" style="margin-bottom: 1rem;"></span>
+                                <div class="action-button-group">
+                                    <button id="save-pad-btn" class="btn btn-primary btn-cta" type="button"> 
+                                        <span class="material-icons-outlined">save</span> 
+                                        <span id="save-button-text">Guardar Pastilla</span> 
+                                    </button>
+                                    <div class="secondary-actions-group">
+                                        <button type="button" class="btn btn-secondary" id="duplicate-pad-btn" style="display: none;">
+                                            <span class="material-icons-outlined">content_copy</span>
+                                            <span>Duplicar</span>
+                                        </button>
+                                        <button type="button" class="btn btn-danger" id="delete-pad-btn" style="display: none;">
+                                            <span class="material-icons-outlined">delete_forever</span>
+                                            <span>Eliminar</span>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Columna Lateral (Sidebar) -->
+                        <div class="layout-col-sidebar">
+                            <div class="card gemini-card">
+                                <h2 class="card-title">Generador de Aplicaciones (IA) ✨</h2>
+                                <p class="card-description">Pega una lista de vehículos (ej: Spark 1.2 10-15, Aveo 1.6 09-12) y la IA los convertirá al formato correcto.</p>
+                                <div class="form-group">
+                                    <label for="gemini-app-input" class="input-label">Texto a convertir:</label>
+                                    <textarea id="gemini-app-input" class="text-input" rows="5" placeholder="Compatible con:&#10;Chevrolet Spark 1.2 (2010-2015)&#10;Nissan March 1.6 (2012-2019) 4WD&#10;Aveo 1.6L 2009..."></textarea>
+                                </div>
+                                <div id="gemini-app-status" class="status-message" style="margin-top: 0; margin-bottom: 0.75rem;"></div>
+                                <button id="gemini-app-generate-btn" class="btn btn-tertiary" type="button" style="width: 100%;">
+                                    <span class="material-icons-outlined">auto_awesome</span>
+                                    <span>Generar Apps</span>
+                                </button>
+                                <div id="gemini-app-loading" class="gemini-loader" style="display: none;"></div>
+                            </div>
+
+                            <div class="card card-sticky"> 
+                                <h2 class="card-title">Aplicaciones (Vehículos)</h2>
+                                 <p class="card-description" id="app-form-description">Añade vehículos compatibles.</p>
+                                <form id="app-form" class="form-grid cols-2" onsubmit="return false;">
+                                    <!-- ... (tu app-form no cambia) ... -->
+                                    <input type="hidden" id="editing-app-index" value="-1">
+                                    <div class="form-group"> 
+                                        <label for="app-marca" class="input-label">Marca</label> 
+                                        <input type="text" id="app-marca" class="text-input" required list="marcas-list"> 
+                                    </div>
+                                    <div class="form-group"> 
+                                        <label for="app-serie" class="input-label">Serie / Modelo</label> 
+                                        <input type="text" id="app-serie" class="text-input" required list="series-list"> 
+                                    </div>
+                                    <div class="form-group"> <label for="app-litros" class="input-label">Litros / Motor</label> <input type="text" id="app-litros" class="text-input"> </div>
+                                    <div class="form-group"> 
+                                        <label for="app-anio" class="input-label">Año(s)</label> 
+                                        <input type="text" id="app-anio" class="text-input" placeholder="Ej: 99 o 99-05"> 
+                                    </div>
+                                    <div class="form-group span-2"> <label for="app-especificacion" class="input-label">Especificación (Opcional)</label> <input type="text" id="app-especificacion" class="text-input" placeholder="Ej: 4WD, Sedan, etc."> </div>
+                                    <div class="form-group span-2 button-group">
+                                        <button id="add-update-app-btn" type="submit" class="btn btn-tertiary"> <span class="material-icons-outlined">add_circle</span> <span id="add-app-button-text">Añadir App</span> </button>
+                                        <button type="button" id="cancel-edit-app-btn" class="btn btn-outline" style="display: none;"> <span class="material-icons-outlined">cancel</span> Cancelar Edición </button>
+                                    </div>
+                                </form>
+                                <datalist id="marcas-list"></datalist>
+                                <datalist id="series-list"></datalist>
+                                <h3 class="list-title">Aplicaciones Actuales / Añadidas:</h3>
+                                <ul id="current-apps-list" class="app-list"> <li class="empty-list">Ninguna todavía</li> </ul>
+                            </div>
+                        </div>
+
+                    </div> 
+                </div> 
+
+            </div>
+        </main>
+    </div>
+
+    <!-- Botón de Tema -->
+     <div class="floating-buttons-container right" id="floating-btn-container" style="display: none;">
+        <button class="material-btn" id="darkBtn" aria-label="Cambiar modo oscuro" aria-pressed="false" type="button">
+            <svg class="lp-icon-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="4"></line><line x1="12" y1="20" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="6.34" y2="6.34"></line><line x1="17.66" y1="17.66" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="4" y2="12"></line><line x1="20" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="6.34" y2="17.66"></line><line x1="17.66" y1="6.34" x2="19.78" y2="4.22"></line></svg>
+            <svg class="lp-icon-moon" viewBox="0 0 24 24" style="opacity:0;"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
+        </button>
+    </div>
+
+    <!-- Modal de Confirmación -->
+    <div id="confirm-modal-overlay" class="modal-overlay" style="display: none;">
+        <div id="confirm-modal-content" class="card modal-card">
+            <h2 class="card-title" id="confirm-modal-title">Confirmar Acción</h2>
+            <p class="card-description" id="confirm-modal-message">¿Estás seguro?</p>
+            <div class="button-group modal-buttons">
+                <button id="confirm-modal-btn-no" class="btn btn-outline" type="button">Cancelar</button>
+                <button id="confirm-modal-btn-yes" class="btn btn-danger" type="button">Confirmar</button>
+            </div>
+        </div>
+    </div>
+    
+    <script type="module" src="admin-script.js"></script> 
+</body>
+</html>
+
