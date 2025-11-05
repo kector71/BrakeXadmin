@@ -153,11 +153,6 @@ body {
     text-decoration: none;
     color: var(--text-color-secondary);
     font-weight: 500;
-    background: none;
-    border: none;
-    cursor: pointer;
-    font-family: var(--font-family);
-    font-size: var(--base-font-size);
 }
 .nav-item:hover {
     background-color: var(--bg-color);
@@ -167,17 +162,6 @@ body {
     color: var(--btn-tertiary-text);
     font-weight: 600;
 }
-#logout-btn.btn-outline {
-    font-size: calc(var(--base-font-size) * 0.9);
-    font-weight: 500;
-    padding: 0.5rem 0.8rem;
-}
-#logout-btn.btn-outline:hover {
-    color: var(--color-red);
-    border-color: var(--color-red);
-    background-color: transparent;
-}
-
 
 /* Contenido Principal */
 .content-wrapper {
@@ -407,10 +391,6 @@ body {
 }
 .btn-primary:hover { 
     opacity: 0.85; 
-}
-.btn-primary:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
 }
 
 .btn-danger { 
@@ -646,24 +626,17 @@ span.ripple {
     bottom: calc(var(--base-gap) * 2); 
     z-index: 900;
 }
-/* ============================================= */
-/* CORRECCIÓN: Posición Botón Modo Oscuro       */
-/* ============================================= */
 .floating-buttons-container.right { 
     right: calc(var(--base-gap) * 2); 
-    /* 'bottom: auto' y 'top: 1.25rem' eliminados */
-    /* Ahora usará el 'bottom' de la clase base */
+    bottom: auto; 
+    top: 1.25rem; 
 }
 @media (max-width: 1024px) {
-    /* Esta regla asegura que se mantenga abajo en tablets */
     .floating-buttons-container.right {
+        top: auto;
         bottom: calc(var(--base-gap) * 2); 
     }
 }
-/* ============================================= */
-/* FIN DE LA CORRECCIÓN                          */
-/* ============================================= */
-
 
 .material-btn {
     width: 44px; 
@@ -706,7 +679,6 @@ span.ripple {
     fill: currentColor; 
     stroke: none;
 }
-/* --- Fin Corrección de Iconos --- */
 
 
 /* --- ESTILOS: Layout Compacto --- */
@@ -791,6 +763,9 @@ span.ripple {
     opacity: 0.5;
 }
 
+/* --- Estilos Subida de Imagen ELIMINADOS --- */
+
+
 /* --- Media Queries (Responsive) --- */
 @media (max-width: 1024px) {
     .main-content {
@@ -856,93 +831,4 @@ span.ripple {
     .search-wrapper .text-input {
         flex-grow: 1; 
     }
-}
-
-
-/* ============================================= */
-/* NUEVO: Estilos de Inicio de Sesión           */
-/* ============================================= */
-
-.login-container {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 100%;
-    min-height: 100vh;
-    padding: 1rem;
-}
-
-.login-card {
-    width: 100%;
-    max-width: 400px;
-}
-
-@media (max-width: 768px) {
-    .header-right {
-        width: 100%;
-        display: flex;
-        justify-content: center;
-        margin-top: var(--base-gap);
-    }
-    #logout-btn {
-        width: 100%;
-    }
-}
-
-
-/* ============================================= */
-/* NUEVO: Estilos de Gemini API                  */
-/* ============================================= */
-
-.gemini-card textarea {
-    min-height: 120px;
-    resize: vertical;
-    font-size: 0.85rem;
-}
-
-.gemini-loader {
-    width: 24px;
-    height: 24px;
-    border: 3px solid var(--btn-tertiary-bg);
-    border-bottom-color: var(--btn-tertiary-text);
-    border-radius: 50%;
-    display: inline-block;
-    animation: spin 1s linear infinite;
-    margin: 0.5rem auto 0;
-}
-
-
-/* ============================================= */
-/* NUEVO: Estilos para Ver/Ocultar Contraseña   */
-/* ============================================= */
-.input-wrapper-relative {
-    position: relative;
-}
-
-.btn-icon-toggle {
-    position: absolute;
-    top: 50%;
-    right: 5px; /* Pequeño padding */
-    transform: translateY(-50%);
-    background: none;
-    border: none;
-    cursor: pointer;
-    color: var(--text-color-secondary);
-    padding: var(--base-padding); /* Área de clic más grande */
-    border-radius: var(--base-radius);
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-}
-.btn-icon-toggle:hover {
-    color: var(--text-color-primary);
-    background-color: var(--bg-color);
-}
-.btn-icon-toggle .material-icons-outlined {
-    font-size: calc(var(--base-font-size) * 1.25);
-}
-
-/* Hacer espacio para el botón dentro del input */
-.input-wrapper-relative .text-input {
-    padding-right: 40px; 
 }

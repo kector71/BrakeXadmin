@@ -9,9 +9,8 @@ const {
     setDoc,
     deleteDoc,
     onSnapshot,
-    onAuthStateChanged,
-    signInWithEmailAndPassword, // <-- Autenticación
-    signOut                     // <-- Salir
+    signInAnonymously,
+    onAuthStateChanged
 } = window.firebaseTools;
 
 
@@ -29,8 +28,8 @@ document.addEventListener('DOMContentLoaded', () => {
     let searchTimeout; 
 
     // --- Expresiones Regulares para Validación ---
-    const anioRegex = /^(?:(\d{2}|\d{4})(?:-(\d{2}|\d{4}))?)$/; // Ej: 99 o 1999 o 99-05 o 1999-2005
-    const medidasRegex = /^\d+(\.\d+)?\s*x\s*\d+(\.\d+)?(,\s*\d+(\.\d+)?\s*x\s*\d+(\.\d+)?)*$/; // Ej: 100 x 50 o 100 x 50, 110.5 x 60
+    const anioRegex = /^(?:(\d{2}|\d{4})(?:-(\d{2}|\d{4}))?)$/;
+    const medidasRegex = /^\d+(\.\d+)?\s*x\s*\d+(\.\d+)?(,\s*\d+(\.\d+)?\s*x\s*\d+(\.\d+)?)*$/;
 
 
     // ----- DOM ELEMENTS -----
@@ -38,25 +37,6 @@ document.addEventListener('DOMContentLoaded', () => {
     try {
         console.log("Attempting to obtain DOM elements...");
         els = {
-            // --- Elementos de Login/App ---
-            loginContainer: document.getElementById('login-container'),
-            loginForm: document.getElementById('login-form'),
-            loginEmail: document.getElementById('login-email'),
-            loginPassword: document.getElementById('login-password'),
-            loginPasswordToggle: document.getElementById('login-password-toggle'), // <-- AÑADIDO
-            loginBtn: document.getElementById('login-btn'),
-            loginMessage: document.getElementById('login-message'),
-            mainAppContainer: document.getElementById('main-app-container'),
-            floatingBtnContainer: document.getElementById('floating-btn-container'),
-            logoutBtn: document.getElementById('logout-btn'),
-            
-            // --- Elementos de Gemini ---
-            geminiAppInput: document.getElementById('gemini-app-input'),
-            geminiAppGenerateBtn: document.getElementById('gemini-app-generate-btn'),
-            geminiAppStatus: document.getElementById('gemini-app-status'),
-            geminiAppLoading: document.getElementById('gemini-app-loading'),
-
-            // --- Elementos del Panel ---
             navItems: document.querySelectorAll('.nav-item'),
             contentSections: document.querySelectorAll('.content-section'),
             pageTitle: document.getElementById('page-title'),
@@ -83,6 +63,7 @@ document.addEventListener('DOMContentLoaded', () => {
             padMedidas: document.getElementById('pad-medidas'), 
             padImagenes: document.getElementById('pad-imagenes'),
             imagePreviewContainer: document.getElementById('image-preview-container'),
+
             appForm: document.getElementById('app-form'),
             editingAppIndexInput: document.getElementById('editing-app-index'),
             appMarca: document.getElementById('app-marca'),
@@ -104,17 +85,23 @@ document.addEventListener('DOMContentLoaded', () => {
 
             savePadStatus: document.getElementById('save-pad-status'),
             confirmModalOverlay: document.getElementById('confirm-modal-overlay'),
-            confirmModalContent: document.querySelector('#confirm-modal-content'),
+            confirmModalContent: document.getElementById('confirm-modal-content'),
             confirmModalTitle: document.getElementById('confirm-modal-title'),
             confirmModalMessage: document.getElementById('confirm-modal-message'),
             confirmModalBtnYes: document.getElementById('confirm-modal-btn-yes'),
             confirmModalBtnNo: document.getElementById('confirm-modal-btn-no'),
             marcasList: document.getElementById('marcas-list'), 
-            seriesList: document.getElementById('series-list') 
+            seriesList: document.getElementById('series-list'),
+            
+            jsonOutput: document.getElementById('json-output'),
+            generateDownloadBtn: document.getElementById('generate-download-btn'),
+            downloadStatus: document.getElementById('download-status'),
+            copyJsonBtn: document.getElementById('copy-json-btn'),
+            copyStatus: document.getElementById('copy-status'),
+            exportExcelBtn: document.getElementById('export-excel-btn')
         };
         
-        // Revisar elementos cruciales
-        if (!els.loginContainer || !els.mainAppContainer || !els.pageTitle || !els.searchType || !els.deletePadBtn || !els.duplicatePadBtn || !els.imagePreviewContainer || !els.marcasList || !els.darkBtn || !els.geminiAppGenerateBtn || !els.loginPasswordToggle) {
+        if (!els.pageTitle || !els.searchType || !els.deletePadBtn || !els.duplicatePadBtn || !els.imagePreviewContainer || !els.marcasList || !els.darkBtn || !els.exportExcelBtn) {
              throw new Error("Elementos esenciales del layout o formulario no encontrados.");
         }
         console.log("DOM elements obtained successfully.");
@@ -129,7 +116,10 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- Modal de Confirmación ---
     let confirmResolve = null;
     const showCustomConfirm = (message, title = "Confirmar Acción", confirmText = "Confirmar", confirmClass = "btn-danger") => {
-        if (!els.confirmModalOverlay) return Promise.resolve(false); // Fallback
+        if (!els.confirmModalOverlay || !els.confirmModalTitle || !els.confirmModalMessage || !els.confirmModalBtnYes) {
+            console.error("Faltan elementos del modal de confirmación.");
+            return Promise.resolve(false);
+        }
         els.confirmModalTitle.textContent = title;
         els.confirmModalMessage.textContent = message;
         els.confirmModalBtnYes.textContent = confirmText;
@@ -317,7 +307,7 @@ document.addEventListener('DOMContentLoaded', () => {
             } catch (e) { console.error("Error buscando en pastilla:", e, pad); }
 
              if (foundMatch) {
-                  acc.push({ pad, docId: pad.id, foundText: foundMatch }); 
+                 acc.push({ pad, docId: pad.id, foundText: foundMatch }); 
              }
              return acc;
         }, []); 
@@ -373,11 +363,6 @@ document.addEventListener('DOMContentLoaded', () => {
         if (els.imagePreviewContainer) els.imagePreviewContainer.innerHTML = ''; 
         if (els.padMedidas) els.padMedidas.classList.remove('is-valid', 'is-invalid');
 
-        // Limpiar también el formulario de Gemini
-        if (els.geminiAppInput) els.geminiAppInput.value = '';
-        if (els.geminiAppStatus) els.geminiAppStatus.textContent = '';
-        if (els.geminiAppLoading) els.geminiAppLoading.style.display = 'none';
-        
         resetAppForm();
         renderCurrentApps();
     };
@@ -540,185 +525,124 @@ document.addEventListener('DOMContentLoaded', () => {
         button.insertBefore(circle, button.firstChild);
         circle.addEventListener('animationend', () => { if (circle.parentNode) circle.remove(); }, { once: true });
     };
-
-    // =============================================
-    //  NUEVO: Funciones de Gemini API
-    // =============================================
     
-    /**
-     * Realiza una llamada fetch con reintentos y backoff exponencial.
-     */
-    async function fetchWithBackoff(url, options, retries = 3, delay = 1000) {
+    // --- Funciones de Exportación ---
+    const generateJsonString = () => {
+        if (!Array.isArray(allPadsCache) || allPadsCache.length === 0) return '[]';
+        const listToExport = allPadsCache.map(({ id, ...rest }) => rest);
+        
+        listToExport.sort((a, b) => {
+            const refA_id = (a?.ref?.[0] || '').toLowerCase();
+            const refB_id = (b?.ref?.[0] || '').toLowerCase();
+            return refA_id.localeCompare(refB_id, undefined, { numeric: true, sensitivity: 'base' });
+        });
+        
         try {
-            const response = await fetch(url, options);
-            if (response.ok) {
-                return response.json();
-            }
-            // No registrar errores de reintento en la consola
-            if (retries > 0 && [429, 500, 503].includes(response.status)) {
-                await new Promise(res => setTimeout(res, delay));
-                return fetchWithBackoff(url, options, retries - 1, delay * 2);
-            }
-            throw new Error(`Error en la solicitud: ${response.statusText}`);
-        } catch (error) {
-            if (retries > 0) {
-                await new Promise(res => setTimeout(res, delay));
-                return fetchWithBackoff(url, options, retries - 1, delay * 2);
-            }
-            // Solo lanzar el error después de que todos los reintentos fallen
-            console.error("Fallaron todos los reintentos de fetch:", error);
-            throw error;
+            const compactJson = JSON.stringify(listToExport);
+            const formattedJson = compactJson.replace(/},{/g, '},\n{');
+            return formattedJson;
+        } catch (err) {
+            console.error("Error stringifying data:", err);
+            showStatus(els.downloadStatus, `Error interno al generar JSON: ${err.message}`, true);
+            return '[]';
         }
-    }
+    };
 
-    /**
-     * Llama a la API de Gemini para generar aplicaciones.
-     */
-    async function handleGeminiAppGenerate() {
-        const inputText = els.geminiAppInput.value.trim();
-        if (!inputText) {
-            showStatus(els.geminiAppStatus, "Por favor, pega el texto primero.", true, 3000);
+    const displayFormattedJson = (jsonString) => {
+        if (!els.jsonOutput) return;
+        try {
+            const reCompact = jsonString.replace(/},\n{/g, '},{');
+            const parsedData = JSON.parse(reCompact);
+            els.jsonOutput.value = JSON.stringify(parsedData, null, 2);
+        } catch (e) {
+            console.error("Error formatting JSON for display:", e, jsonString);
+             els.jsonOutput.value = jsonString;
+        }
+    };
+    
+    const exportToExcel = () => {
+        if (typeof XLSX === 'undefined') {
+            showStatus(els.downloadStatus, "Error: La librería XLSX no se pudo cargar. Revisa la <script> tag.", true);
             return;
         }
-
-        els.geminiAppLoading.style.display = 'block';
-        els.geminiAppGenerateBtn.disabled = true;
-        showStatus(els.geminiAppStatus, "✨ Analizando texto con IA...", false, 20000);
-
-        // El prompt del sistema que instruye a la IA
-        const systemPrompt = `Eres un asistente experto en catalogación de autopartes. 
-Tu tarea es leer un texto desordenado y extraer una lista de aplicaciones de vehículos.
-Debes devolver SÓLO un array JSON válido.
-La estructura de cada objeto debe ser:
-{
-  "marca": "Nombre de la Marca (ej: Chevrolet)",
-  "serie": "Nombre de la Serie/Modelo (ej: Spark)",
-  "litros": "Litros o motor (ej: 1.2L o 1.6)",
-  "año": "Rango de años (ej: 2010-2015 o 2009)",
-  "especificacion": "Cualquier detalle extra (ej: 4WD o Sedan)"
-}
-Interpreta los años "10-15" como "2010-2015". Si falta un dato (como 'litros'), usa un string vacío "".`;
-
-        // El esquema JSON que la IA DEBE seguir
-        const jsonSchema = {
-            type: "ARRAY",
-            items: {
-                type: "OBJECT",
-                properties: {
-                    "marca": { "type": "STRING" },
-                    "serie": { "type": "STRING" },
-                    "litros": { "type": "STRING" },
-                    "año": { "type": "STRING" },
-                    "especificacion": { "type": "STRING" }
-                },
-                required: ["marca", "serie"]
-            }
-        };
-
-        const payload = {
-            contents: [{ parts: [{ text: inputText }] }],
-            systemInstruction: {
-                parts: [{ text: systemPrompt }]
-            },
-            generationConfig: {
-                responseMimeType: "application/json",
-                responseSchema: jsonSchema
-            }
-        };
-
-        const apiKey = ""; // API key se inyecta automáticamente
-        const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
-
-        try {
-            const result = await fetchWithBackoff(apiUrl, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
-            });
-
-            const text = result.candidates?.[0]?.content?.parts?.[0]?.text;
-            if (!text) {
-                throw new Error("Respuesta de la IA vacía o mal formada.");
-            }
-
-            const newApps = JSON.parse(text);
-            if (!Array.isArray(newApps)) {
-                 throw new Error("La IA no devolvió un array.");
-            }
-
-            // Añadir las nuevas apps a la lista actual
-            currentApps.push(...newApps);
-            renderCurrentApps(); // Actualizar la lista en la UI
-            
-            showStatus(els.geminiAppStatus, `¡Éxito! Se añadieron ${newApps.length} aplicaciones.`, false, 4000);
-            els.geminiAppInput.value = ''; // Limpiar el textarea
-
-        } catch (error) {
-            console.error("Error llamando a Gemini API:", error);
-            showStatus(els.geminiAppStatus, "Error al procesar el texto. Intenta de nuevo.", true, 5000);
-        } finally {
-            els.geminiAppLoading.style.display = 'none';
-            els.geminiAppGenerateBtn.disabled = false;
+        if (!Array.isArray(allPadsCache) || allPadsCache.length === 0) {
+            showStatus(els.downloadStatus, "No hay datos para exportar a Excel.", true);
+            return;
         }
-    }
+        console.log("Aplanando datos para exportar a Excel...");
+        
+        const flattenedData = [];
+        const headers = [
+            'ref', 'oem', 'fmsi', 'posición', 'medidas', 'imagenes',
+            'marca', 'serie', 'litros', 'año', 'especificacion'
+        ]; 
+
+        for (const pad of allPadsCache) { 
+            const refString = (pad.ref || []).join(', ');
+            const oemString = (pad.oem || []).join(', ');
+            const fmsiString = (pad.fmsi || []).join(', ');
+            const imagenesString = (pad.imagenes || []).join(', ');
+            const medidasString = (Array.isArray(pad.medidas) ? pad.medidas.join(', ') : (pad.medidas || ''));
+
+            if (pad.aplicaciones && pad.aplicaciones.length > 0) {
+                for (const app of pad.aplicaciones) {
+                    flattenedData.push({
+                        'ref': refString,
+                        'oem': oemString,
+                        'fmsi': fmsiString,
+                        'posición': pad.posición || '',
+                        'medidas': medidasString,
+                        'imagenes': imagenesString,
+                        'marca': app.marca || '',
+                        'serie': app.serie || '',
+                        'litros': app.litros || '',
+                        'año': app.año || '',
+                        'especificacion': app.especificacion || ''
+                    });
+                }
+            } else {
+                flattenedData.push({
+                    'ref': refString,
+                    'oem': oemString,
+                    'fmsi': fmsiString,
+                    'posición': pad.posición || '',
+                    'medidas': medidasString,
+                    'imagenes': imagenesString,
+                });
+            }
+        }
+        
+        try {
+            const ws = XLSX.utils.json_to_sheet(flattenedData, { 
+                header: headers
+            });
+            
+            ws['!autofilter'] = { ref: XLSX.utils.encode_range(XLSX.utils.decode_range(ws['!ref'])) };
+            
+            const colWidths = [
+                {wch: 20}, {wch: 15}, {wch: 15}, {wch: 10}, {wch: 15}, {wch: 20},
+                {wch: 20}, {wch: 25}, {wch: 10}, {wch: 15}, {wch: 25}
+            ]; 
+            ws['!cols'] = colWidths;
+
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, 'Pastillas');
+            XLSX.writeFile(wb, 'data_exportada.xlsx');
+            
+            showStatus(els.downloadStatus, `data_exportada.xlsx generado con ${flattenedData.length} filas.`, false);
+
+        } catch (err) {
+            console.error("Error al exportar a Excel:", err);
+            showStatus(els.downloadStatus, `Error al exportar Excel: ${err.message}`, true);
+        }
+    };
+    
+    // --- Función de Subida de Imagen ELIMINADA ---
 
 
     // ----- EVENT LISTENERS -----
     try {
         console.log("Adding event listeners...");
-
-        // --- Listeners de Login/Logout ---
-        els.loginForm.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            if (!els.loginEmail || !els.loginPassword || !els.loginBtn || !els.loginMessage) return;
-
-            const email = els.loginEmail.value;
-            const password = els.loginPassword.value;
-            els.loginBtn.disabled = true;
-            els.loginBtn.querySelector('span:last-child').textContent = "Ingresando...";
-            showStatus(els.loginMessage, "Conectando...", false, 10000);
-
-            try {
-                await signInWithEmailAndPassword(auth, email, password);
-                showStatus(els.loginMessage, "¡Éxito!", false, 2000);
-            } catch (error) {
-                console.error("Error de inicio de sesión:", error.code, error.message);
-                showStatus(els.loginMessage, "Error: Usuario o contraseña incorrectos.", true, 5000);
-            } finally {
-                els.loginBtn.disabled = false;
-                els.loginBtn.querySelector('span:last-child').textContent = "Ingresar";
-            }
-        });
-
-        els.logoutBtn.addEventListener('click', async () => {
-             const confirmed = await showCustomConfirm("¿Estás seguro de que quieres cerrar sesión?", "Cerrar Sesión", "Cerrar Sesión", "btn-danger");
-             if (confirmed) {
-                try {
-                    await signOut(auth);
-                    allPadsCache = []; // Limpiar caché de datos
-                    currentApps = []; // Limpiar apps en memoria
-                    resetFormsAndMode(); // Limpiar formularios
-                    updateDashboardStats(); // Actualizar stats a 0
-                } catch (error) {
-                    console.error("Error al cerrar sesión:", error);
-                }
-             }
-        });
-
-        // --- CORRECCIÓN: Listener para Ver/Ocultar Contraseña ---
-        els.loginPasswordToggle.addEventListener('click', () => {
-            const input = els.loginPassword;
-            const icon = els.loginPasswordToggle.querySelector('span.material-icons-outlined');
-            if (input.type === "password") {
-                input.type = "text";
-                icon.textContent = "visibility_off";
-                els.loginPasswordToggle.setAttribute('aria-label', 'Ocultar contraseña');
-            } else {
-                input.type = "password";
-                icon.textContent = "visibility";
-                els.loginPasswordToggle.setAttribute('aria-label', 'Mostrar contraseña');
-            }
-        });
 
         // Modales
         els.confirmModalBtnYes?.addEventListener('click', () => hideCustomConfirm(true));
@@ -861,7 +785,6 @@ Interpreta los años "10-15" como "2010-2015". Si falta un dato (como 'litros'),
 
             try {
                 if (currentEditingId && currentEditingId !== docId) {
-                    // Si la Ref principal (ID) cambió, borramos la antigua y creamos una nueva
                     const oldDocRef = doc(db, "pastillas", currentEditingId);
                     await deleteDoc(oldDocRef);
                     message = `¡Pastilla movida de "${currentEditingId}" a "${docId}"!`;
@@ -872,7 +795,7 @@ Interpreta los años "10-15" como "2010-2015". Si falta un dato (como 'litros'),
                 }
                 
                 const newDocRef = doc(db, "pastillas", docId);
-                await setDoc(newDocRef, newPad); // setDoc crea o sobrescribe
+                await setDoc(newDocRef, newPad);
                 
                 resetFormsAndMode();
                 setActiveSection('dashboard');
@@ -931,9 +854,9 @@ Interpreta los años "10-15" como "2010-2015". Si falta un dato (como 'litros'),
             if (els.duplicatePadBtn) els.duplicatePadBtn.style.display = 'none';
 
              if (els.savePadBtn) {
-                 els.savePadBtn.classList.remove('btn-danger', 'btn-secondary');
-                 els.savePadBtn.classList.add('btn-primary');
-             }
+                els.savePadBtn.classList.remove('btn-danger', 'btn-secondary');
+                els.savePadBtn.classList.add('btn-primary');
+            }
             
             if (els.padRef) els.padRef.focus();
             showStatus(els.savePadStatus, "Modo 'Duplicar' activado. Cambia la 'Ref' y guarda.", false, 6000);
@@ -947,6 +870,8 @@ Interpreta los años "10-15" como "2010-2015". Si falta un dato (como 'litros'),
             });
         }
         
+        // --- Listener de Subida de Imagen ELIMINADO ---
+
         // --- LISTENERS PARA VALIDACIÓN Y AUTOCOMPLETADO ---
         if(els.appMarca) {
             els.appMarca.addEventListener('input', () => updateSerieDatalist(els.appMarca.value.trim()));
@@ -956,6 +881,54 @@ Interpreta los años "10-15" como "2010-2015". Si falta un dato (como 'litros'),
         }
         if(els.padMedidas) {
             els.padMedidas.addEventListener('input', () => validateField(els.padMedidas, medidasRegex));
+        }
+
+        // --- LISTENERS DE EXPORTACIÓN ---
+        if (els.generateDownloadBtn) {
+            els.generateDownloadBtn.addEventListener('click', () => {
+                const jsonString = generateJsonString();
+                displayFormattedJson(jsonString); 
+
+                if (!Array.isArray(allPadsCache) || allPadsCache.length === 0) {
+                    showStatus(els.downloadStatus, "No hay datos en la base de datos para generar.", true);
+                    return;
+                }
+                try {
+                    const blob = new Blob([jsonString], { type: 'application/json;charset=utf-8' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.style.display = 'none';
+                    a.href = url;
+                    a.download = 'data_firebase_backup.json';
+                    document.body.appendChild(a);
+                    a.click();
+                    setTimeout(() => { URL.revokeObjectURL(url); document.body.removeChild(a); }, 100);
+                    showStatus(els.downloadStatus, `data_firebase_backup.json (${allPadsCache.length} pastillas) generado.`, false);
+                } catch (err) {
+                    console.error("Error descarga Blob:", err);
+                    showStatus(els.downloadStatus, `Error descarga: ${err.message}`, true);
+                }
+            });
+        }
+        
+        if (els.exportExcelBtn) {
+             els.exportExcelBtn.addEventListener('click', exportToExcel);
+        }
+
+        if (els.copyJsonBtn && els.jsonOutput) {
+            els.copyJsonBtn.addEventListener('click', () => {
+                const jsonToCopy = els.jsonOutput.value;
+                 if (!jsonToCopy || jsonToCopy.length === 0 || jsonToCopy === '[]') {
+                    showStatus(els.copyStatus, "No hay JSON en vista previa.", true);
+                    return;
+                }
+                navigator.clipboard.writeText(jsonToCopy)
+                    .then(() => showStatus(els.copyStatus, "¡JSON (formateado) copiado!", false))
+                    .catch(err => {
+                        console.error("Error copia Clipboard:", err);
+                        showStatus(els.copyStatus, `Error copia: ${err.message}.`, true);
+                    });
+            });
         }
 
         // --- LISTENER MODO OSCURO ---
@@ -975,9 +948,6 @@ Interpreta los años "10-15" como "2010-2015". Si falta un dato (como 'litros'),
             catch (storageError) { console.warn("No se pudo guardar pref modo oscuro:", storageError); }
         });
 
-        // --- NUEVO: LISTENER PARA BOTÓN GEMINI ---
-        els.geminiAppGenerateBtn.addEventListener('click', handleGeminiAppGenerate);
-        
         console.log("Todos los event listeners configurados.");
 
     } catch (error) {
@@ -1008,31 +978,24 @@ Interpreta los años "10-15" como "2010-2015". Si falta un dato (como 'litros'),
         });
     } catch (storageError) { console.warn("No se pudo aplicar pref modo oscuro:", storageError); }
 
-    // =============================================
-    //  ACTUALIZADO: Lógica de Inicialización de Firebase
-    // =============================================
+    // --- INICIALIZACIÓN DE FIREBASE ---
     const initFirebase = () => {
         try {
             onAuthStateChanged(auth, (user) => {
-                if (user && !user.isAnonymous) {
-                    // --- Usuario AUTENTICADO ---
-                    console.log("Usuario autenticado:", user.uid, user.email);
-                    if(els.mainAppContainer) els.mainAppContainer.style.display = 'block';
-                    if(els.floatingBtnContainer) els.floatingBtnContainer.style.display = 'block';
-                    if(els.loginContainer) els.loginContainer.style.display = 'none';
+                if (user) {
+                    console.log("Usuario anónimo autenticado:", user.uid);
                     loadDataFromFirebase();
                 } else {
-                    // --- Usuario NO autenticado ---
-                    console.log("Usuario no logueado.");
-                    if(els.mainAppContainer) els.mainAppContainer.style.display = 'none';
-                    if(els.floatingBtnContainer) els.floatingBtnContainer.style.display = 'none';
-                    if(els.loginContainer) els.loginContainer.style.display = 'flex';
+                    console.log("Usuario no logueado, intentando iniciar sesión...");
+                    signInAnonymously(auth).catch(err => {
+                        console.error("Error en inicio de sesión anónimo:", err);
+                        setConnectionStatus(false, `Error de autenticación: ${err.message}`);
+                    });
                 }
             });
         } catch (err) {
-            console.error("Error inicializando Firebase Auth:", err);
-            // Mostrar error en la pantalla de login si falla
-            if(els.loginMessage) showStatus(els.loginMessage, `Error: ${err.message}`, true, 10000);
+            console.error("Error inicializando Firebase:", err);
+            setConnectionStatus(false, `Error: ${err.message}`);
         }
     };
 
@@ -1056,11 +1019,7 @@ Interpreta los años "10-15" como "2010-2015". Si falta un dato (como 'litros'),
 
         }, (error) => {
             console.error("Error al escuchar datos de Firestore:", error);
-            if (error.code === 'permission-denied') {
-                 setConnectionStatus(false, `Error: Permiso denegado. Revisa las reglas de Firestore.`);
-            } else {
-                 setConnectionStatus(false, `Error de Base de Datos: ${error.message}`);
-            }
+            setConnectionStatus(false, `Error de Base de Datos: ${error.message}`);
         });
     };
 
