@@ -34,18 +34,18 @@
     --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
 
     /* --- Variables de Tamaño Base para escalado --- */
-    --base-font-size: 0.9rem; /* Reducido de 1rem (16px) a 0.9rem (14.4px) */
-    --base-padding: 0.6rem; /* Reducido de 0.75rem */
-    --base-gap: 0.8rem; /* Reducido de 1rem */
-    --base-radius: 6px; /* Reducido de 8px */
-    --base-title-size: 1.1rem; /* Reducido de 1.25rem */
-    --base-margin-bottom: 0.75rem; /* Reducido de 1rem */
+    --base-font-size: 0.9rem; /* 14.4px. Se mantiene para el texto general */
+    --base-padding: 0.6rem; 
+    --base-gap: 0.8rem;
+    --base-radius: 6px;
+    --base-title-size: 1.1rem;
+    --base-margin-bottom: 0.75rem;
 }
 
 .lp-dark {
     /* Modo Oscuro */
     --bg-color: #1a202c;
-    --bg-color-sidebar: #2d3748; /* Sigue en uso para el header */
+    --bg-color-sidebar: #2d3748; 
     --bg-color-card: #2d3748;
     --text-color-primary: #edf2f7;
     --text-color-secondary: #a0aec0;
@@ -321,6 +321,10 @@ body {
     font-weight: 500;
     color: var(--text-color-secondary);
 }
+
+/* ============================================= */
+/* CAMBIO: Evitar Zoom en iOS                    */
+/* ============================================= */
 .text-input, .select-input {
     width: 100%;
     padding: var(--base-padding) var(--base-gap); 
@@ -329,9 +333,13 @@ body {
     background-color: var(--input-bg);
     color: var(--text-color-primary);
     font-family: var(--font-family);
-    font-size: var(--base-font-size); 
+    font-size: 16px; /* <-- CAMBIADO DE var(--base-font-size) a 16px */
     transition: border-color 0.2s, box-shadow 0.2s, background-color 0.2s;
 }
+/* ============================================= */
+/* FIN DEL CAMBIO                             */
+/* ============================================= */
+
 .text-input:focus, .select-input:focus {
     outline: none;
     border-color: var(--input-focus-border);
@@ -845,7 +853,10 @@ span.ripple {
 }
 
 
-/* --- Estilos de Inicio de Sesión --- */
+/* ============================================= */
+/* Estilos de Inicio de Sesión                   */
+/* ============================================= */
+
 .login-container {
     display: flex;
     align-items: center;
@@ -872,7 +883,9 @@ span.ripple {
     }
 }
 
-/* --- Estilos para Ver/Ocultar Contraseña --- */
+/* ============================================= */
+/* Estilos para Ver/Ocultar Contraseña          */
+/* ============================================= */
 .input-wrapper-relative {
     position: relative;
 }
