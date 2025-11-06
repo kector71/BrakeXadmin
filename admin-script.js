@@ -12,17 +12,18 @@ const {
     onAuthStateChanged,
     signInWithEmailAndPassword,
     signOut,
-    // Nuevas herramientas para el historial
     serverTimestamp,
     addDoc,
     query,
     orderBy,
-    limit
+    limit,
+    setPersistence,
+    browserSessionPersistence
 } = window.firebaseTools;
 
 
 document.addEventListener('DOMContentLoaded', () => {
-    console.log("Admin script 2.3 (History Log) loaded. DOM ready.");
+    console.log("Admin script 2.4 (Session Control) loaded. DOM ready.");
 
     // ----- VARIABLES GLOBALES -----
     let allPadsCache = []; 
@@ -33,7 +34,8 @@ document.addEventListener('DOMContentLoaded', () => {
     let autocompleteData = {}; 
     let imagePreviewTimeout; 
     let searchTimeout; 
-    let currentUserEmail = null; // Guardar el email del usuario logueado
+    let inactivityTimer; // Temporizador de inactividad
+    const INACTIVITY_DURATION = 15 * 60 * 1000; // 15 minutos en milisegundos
 
     // --- Expresiones Regulares para Validación ---
     const anioRegex = /^(?:(\d{2}|\d{4})(?:-(\d{2}|\d{4}))?)$/; // Ej: 99 o 1999 o 99-05 o 1999-2005
@@ -44,98 +46,93 @@ document.addEventListener('DOMContentLoaded', () => {
     let els = {};
     try {
         console.log("Attempting to obtain DOM elements...");
+        
+        // Función auxiliar para obtener elementos o devolver null
+        const getEl = id => document.getElementById(id);
+
         els = {
             // --- Elementos de Login/App ---
-            loginContainer: document.getElementById('login-container'),
-            loginForm: document.getElementById('login-form'),
-            loginEmail: document.getElementById('login-email'),
-            loginPassword: document.getElementById('login-password'),
-            loginPasswordToggle: document.getElementById('login-password-toggle'),
-            loginBtn: document.getElementById('login-btn'),
-            loginMessage: document.getElementById('login-message'),
-            mainAppContainer: document.getElementById('main-app-container'),
-            floatingBtnContainer: document.getElementById('floating-btn-container'),
-            logoutBtn: document.getElementById('logout-btn'),
+            loginContainer: getEl('login-container'),
+            loginForm: getEl('login-form'),
+            loginEmail: getEl('login-email'),
+            loginPassword: getEl('login-password'),
+            loginPasswordToggle: getEl('login-password-toggle'),
+            loginBtn: getEl('login-btn'),
+            loginMessage: getEl('login-message'),
+            mainAppContainer: getEl('main-app-container'),
+            floatingBtnContainer: getEl('floating-btn-container'),
+            logoutBtn: getEl('logout-btn'),
             
-            // --- Elementos del Panel ---
+            // --- Elementos del Panel (Búsqueda, Formulario Principal, Apps) ---
             navItems: document.querySelectorAll('.nav-item'),
             contentSections: document.querySelectorAll('.content-section'),
-            pageTitle: document.getElementById('page-title'),
-            padCountDashboard: document.getElementById('pad-count-dashboard'),
-            appsTotalDashboard: document.getElementById('apps-total-dashboard'),
+            pageTitle: getEl('page-title'),
+            padCountDashboard: getEl('pad-count-dashboard'),
+            appsTotalDashboard: getEl('apps-total-dashboard'),
+            exportJsonBtn: getEl('export-json-btn'),
+            exportExcelBtn: getEl('export-excel-btn'),
             
-            // --- Exportación ---
-            exportJsonBtn: document.getElementById('export-json-btn'),
-            exportExcelBtn: document.getElementById('export-excel-btn'),
-            
-            connectionStatus: document.getElementById('connection-status'),
-            connectionStatusText: document.getElementById('connection-status-text'),
+            connectionStatus: getEl('connection-status'),
+            connectionStatusText: getEl('connection-status-text'),
 
-            // --- Búsqueda y Formulario Principal ---
-            searchRef: document.getElementById('search-ref'),
-            searchType: document.getElementById('search-type'), 
-            searchBtn: document.getElementById('search-btn'),
-            searchResults: document.getElementById('search-results'),
-            clearSearchBtn: document.getElementById('clear-search-btn'),
-            formModeTitle: document.getElementById('form-mode-title'),
-            editIndexInput: document.getElementById('edit-index'), 
-            saveButtonText: document.getElementById('save-button-text'),
-            appFormDescription: document.getElementById('app-form-description'),
-            padFormMain: document.getElementById('pad-form-main'),
-            padRef: document.getElementById('pad-ref'),
-            padOem: document.getElementById('pad-oem'),
-            padFmsi: document.getElementById('pad-fmsi'),
-            padPosicion: document.getElementById('pad-posicion'),
-            padMedidas: document.getElementById('pad-medidas'), 
-            padImagenes: document.getElementById('pad-imagenes'),
-            imagePreviewContainer: document.getElementById('image-preview-container'),
+            searchRef: getEl('search-ref'),
+            searchType: getEl('search-type'), 
+            searchBtn: getEl('search-btn'),
+            searchResults: getEl('search-results'),
+            clearSearchBtn: getEl('clear-search-btn'),
+            formModeTitle: getEl('form-mode-title'),
+            editIndexInput: getEl('edit-index'), 
+            saveButtonText: getEl('save-button-text'),
+            appFormDescription: getEl('app-form-description'),
+            padFormMain: getEl('pad-form-main'),
+            padRef: getEl('pad-ref'),
+            padOem: getEl('pad-oem'),
+            padFmsi: getEl('pad-fmsi'),
+            padPosicion: getEl('pad-posicion'),
+            padMedidas: getEl('pad-medidas'), 
+            padImagenes: getEl('pad-imagenes'),
+            imagePreviewContainer: getEl('image-preview-container'),
+            appForm: getEl('app-form'),
+            editingAppIndexInput: getEl('editing-app-index'),
+            appMarca: getEl('app-marca'),
+            appSerie: getEl('app-serie'),
+            appLitros: getEl('app-litros'),
+            appAnio: getEl('app-anio'),
+            appEspec: getEl('app-especificacion'),
+            addUpdateAppBtn: getEl('add-update-app-btn'),
+            addAppButtonText: getEl('add-app-button-text'),
+            cancelEditAppBtn: getEl('cancel-edit-app-btn'),
+            currentAppsList: getEl('current-apps-list'),
+            savePadBtn: getEl('save-pad-btn'),
+            deletePadBtn: getEl('delete-pad-btn'),
+            duplicatePadBtn: getEl('duplicate-pad-btn'), 
             
-            // --- Formulario de Apps ---
-            appForm: document.getElementById('app-form'),
-            editingAppIndexInput: document.getElementById('editing-app-index'),
-            appMarca: document.getElementById('app-marca'),
-            appSerie: document.getElementById('app-serie'),
-            appLitros: document.getElementById('app-litros'),
-            appAnio: document.getElementById('app-anio'),
-            appEspec: document.getElementById('app-especificacion'),
-            addUpdateAppBtn: document.getElementById('add-update-app-btn'),
-            addAppButtonText: document.getElementById('add-app-button-text'),
-            cancelEditAppBtn: document.getElementById('cancel-edit-app-btn'),
-            currentAppsList: document.getElementById('current-apps-list'),
-
-            // --- Acciones de Guardado ---
-            savePadBtn: document.getElementById('save-pad-btn'),
-            deletePadBtn: document.getElementById('delete-pad-btn'),
-            duplicatePadBtn: document.getElementById('duplicate-pad-btn'), 
-            savePadStatus: document.getElementById('save-pad-status'),
-            
-            // --- Modo Oscuro y Modal ---
-            darkBtn: document.getElementById('darkBtn'),
+            darkBtn: getEl('darkBtn'),
             sunIcon: document.querySelector('.lp-icon-sun'),
             moonIcon: document.querySelector('.lp-icon-moon'),
-            confirmModalOverlay: document.getElementById('confirm-modal-overlay'),
+
+            savePadStatus: getEl('save-pad-status'),
+            confirmModalOverlay: getEl('confirm-modal-overlay'),
             confirmModalContent: document.querySelector('#confirm-modal-content'),
-            confirmModalTitle: document.getElementById('confirm-modal-title'),
-            confirmModalMessage: document.getElementById('confirm-modal-message'),
-            confirmModalBtnYes: document.getElementById('confirm-modal-btn-yes'),
-            confirmModalBtnNo: document.getElementById('confirm-modal-btn-no'),
-
-            // --- Autocompletado ---
-            marcasList: document.getElementById('marcas-list'), 
-            seriesList: document.getElementById('series-list'),
-
-            // --- Historial ---
-            historyLogTableBody: document.getElementById('history-log-table-body')
+            confirmModalTitle: getEl('confirm-modal-title'),
+            confirmModalMessage: getEl('confirm-modal-message'),
+            confirmModalBtnYes: getEl('confirm-modal-btn-yes'),
+            confirmModalBtnNo: getEl('confirm-modal-btn-no'),
+            marcasList: getEl('marcas-list'), 
+            seriesList: getEl('series-list'),
+            
+            // --- Elementos del Historial ---
+            historyLogTableBody: getEl('history-log-table-body') 
         };
         
-        // Revisar elementos cruciales
-        if (!els.loginContainer || !els.mainAppContainer || !els.pageTitle || !els.exportJsonBtn || !els.historyLogTableBody) {
-             throw new Error("Elementos esenciales del layout o formulario no encontrados.");
+        // Verificación ESENCIAL (solo los 3 contenedores principales)
+        if (!els.loginContainer || !els.mainAppContainer || !els.pageTitle) {
+             throw new Error("Elementos esenciales (Contenedores principales) del layout o formulario no encontrados.");
         }
         console.log("DOM elements obtained successfully.");
     } catch (error) {
         console.error("Error obtaining DOM elements:", error);
-        console.error("Error crítico: No se encontraron elementos HTML necesarios. Revisa IDs.");
+        console.error("Error crítico: No se encontraron elementos HTML necesarios. Revisando la disponibilidad de IDs.");
         return; 
     }
 
@@ -144,7 +141,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- Modal de Confirmación ---
     let confirmResolve = null;
     const showCustomConfirm = (message, title = "Confirmar Acción", confirmText = "Confirmar", confirmClass = "btn-danger") => {
-        if (!els.confirmModalOverlay) return Promise.resolve(false); // Fallback
+        if (!els.confirmModalOverlay) return Promise.resolve(false);
         els.confirmModalTitle.textContent = title;
         els.confirmModalMessage.textContent = message;
         els.confirmModalBtnYes.textContent = confirmText;
@@ -181,8 +178,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (titleSpan) els.pageTitle.textContent = titleSpan.textContent || 'Admin Panel';
             }
         } else {
-            console.error(`Sección con ID '${sectionId}' no encontrada. Volviendo a dashboard.`);
-            setActiveSection('dashboard');
+            console.error(`Sección con ID '${sectionId}' no encontrada.`);
         }
     };
     
@@ -293,6 +289,7 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     const performSearch = () => {
+        if (!els.searchRef || !els.searchType || !els.searchResults) return;
         const query = els.searchRef.value.trim().toLowerCase();
         const searchType = els.searchType.value;
 
@@ -392,7 +389,7 @@ document.addEventListener('DOMContentLoaded', () => {
         renderCurrentApps();
     };
 
-    // --- Estadísticas (ahora usa allPadsCache) ---
+    // --- Estadísticas ---
     const calculateTotalApps = () => {
         if (!Array.isArray(allPadsCache)) return 0;
         return allPadsCache.reduce((total, pad) => {
@@ -441,21 +438,21 @@ document.addEventListener('DOMContentLoaded', () => {
              const anio = app?.año || '';
              const espec = app?.especificacion || '';
              const details = [litros, anio, espec].filter(Boolean).join(' | ');
-            return `
-                <li>
-                    <div class="app-info">
-                        <strong>${marca} ${serie}</strong>
-                        ${details ? `<span class="app-details">${details}</span>` : ''}
-                    </div>
-                    <div class="app-actions">
-                        <button type="button" class="app-action-btn edit-app-btn" data-index="${index}" title="Editar App">
-                            <span class="material-icons-outlined">edit</span>
-                        </button>
-                        <button type="button" class="app-action-btn remove-app-btn" data-index="${index}" title="Eliminar App">
-                            <span class="material-icons-outlined">delete_forever</span>
-                        </button>
-                    </div>
-                </li>`;
+             return `
+                 <li>
+                     <div class="app-info">
+                         <strong>${marca} ${serie}</strong>
+                         ${details ? `<span class="app-details">${details}</span>` : ''}
+                     </div>
+                     <div class="app-actions">
+                         <button type="button" class="app-action-btn edit-app-btn" data-index="${index}" title="Editar App">
+                             <span class="material-icons-outlined">edit</span>
+                         </button>
+                         <button type="button" class="app-action-btn remove-app-btn" data-index="${index}" title="Eliminar App">
+                             <span class="material-icons-outlined">delete_forever</span>
+                         </button>
+                     </div>
+                 </li>`;
         }).join('');
     };
 
@@ -463,14 +460,15 @@ document.addEventListener('DOMContentLoaded', () => {
     const loadAppDataIntoForm = (index) => {
         if (!Array.isArray(currentApps) || index < 0 || index >= currentApps.length) return;
         const app = currentApps[index];
-        if (!app) return;
+        if (!app || !els.appMarca || !els.appSerie || !els.appAnio || !els.appLitros || !els.appEspec) return;
+        
         editingAppIndex = index;
         if (els.editingAppIndexInput) els.editingAppIndexInput.value = index;
-        if (els.appMarca) els.appMarca.value = app.marca || '';
-        if (els.appSerie) els.appSerie.value = app.serie || '';
-        if (els.appLitros) els.appLitros.value = app.litros || '';
-        if (els.appAnio) els.appAnio.value = app.año || '';
-        if (els.appEspec) els.appEspec.value = app.especificacion || '';
+        els.appMarca.value = app.marca || '';
+        els.appSerie.value = app.serie || '';
+        els.appLitros.value = app.litros || '';
+        els.appAnio.value = app.año || '';
+        els.appEspec.value = app.especificacion || '';
         
         validateField(els.appAnio, anioRegex); 
         updateSerieDatalist(app.marca || ""); 
@@ -482,15 +480,15 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         if (els.cancelEditAppBtn) els.cancelEditAppBtn.style.display = 'inline-flex';
         if (els.appFormDescription) els.appFormDescription.textContent = `Editando: ${app.marca || ''} ${app.serie || ''}`;
-        if (els.appMarca) els.appMarca.focus();
+        els.appMarca.focus();
     };
 
     const loadPadDataIntoForms = (docId) => { 
-         const padData = allPadsCache.find(p => p.id === docId); 
-         if (!padData) {
-             console.error("No se encontró la pastilla en el cache con ID:", docId);
-             return;
-         }
+          const padData = allPadsCache.find(p => p.id === docId); 
+          if (!padData) {
+              console.error("No se encontró la pastilla en el cache con ID:", docId);
+              return;
+          }
 
         currentEditingId = docId; 
         
@@ -621,9 +619,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const wsPads = XLSX.utils.json_to_sheet(padsData);
             const wsApps = XLSX.utils.json_to_sheet(appsData);
+
             const wb = XLSX.utils.book_new();
             XLSX.utils.book_append_sheet(wb, wsPads, "Pastillas");
             XLSX.utils.book_append_sheet(wb, wsApps, "Aplicaciones");
+
             XLSX.writeFile(wb, `brakeX_export_${new Date().toISOString().split('T')[0]}.xlsx`);
             
             showStatus(els.connectionStatusText, "Exportación Excel exitosa.", false, 3000);
@@ -634,21 +634,18 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
-
     // --- Funciones de Historial ---
     const logHistory = async (accion, padId) => {
         try {
-            if (!currentUserEmail) {
-                console.warn("Intento de log sin email de usuario.");
-                return;
-            }
+            const user = auth.currentUser;
+            if (!user) return;
 
             const historyCollection = collection(db, "historial");
             await addDoc(historyCollection, {
-                usuarioEmail: currentUserEmail,
+                usuarioEmail: user.email,
                 accion: accion,
                 padId: padId,
-                timestamp: serverTimestamp()
+                timestamp: serverTimestamp() 
             });
 
         } catch (error) {
@@ -660,10 +657,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!els.historyLogTableBody) return;
 
         if (historyDocs.length === 0) {
-            els.historyLogTableBody.innerHTML = `
-                <tr class="empty-row-placeholder">
-                    <td colspan="4">No hay historial de cambios todavía.</td>
-                </tr>`;
+            els.historyLogTableBody.innerHTML = `<tr class="empty-row-placeholder"><td colspan="4">No hay historial de cambios todavía.</td></tr>`;
             return;
         }
 
@@ -672,20 +666,22 @@ document.addEventListener('DOMContentLoaded', () => {
             const data = doc.data();
             
             let fechaFormateada = 'Procesando...';
-            if (data.timestamp) {
+            if (data.timestamp && typeof data.timestamp.toDate === 'function') {
                 fechaFormateada = data.timestamp.toDate().toLocaleString('es-ES', {
-                    day: '2-digit',
-                    month: '2-digit',
-                    year: 'numeric',
-                    hour: '2-digit',
-                    minute: '2-digit',
-                    second: '2-digit'
+                    day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit'
                 });
             }
 
-            // Mapear acción a clase CSS
-            let accionClass = `log-action-${data.accion.replace(' (', '-').replace(')', '')}`;
+            let accionClass = '';
             let accionTexto = data.accion;
+            switch (data.accion) {
+                case 'Crear': accionClass = 'log-action-crear'; break;
+                case 'Actualizar': accionClass = 'log-action-actualizar'; break;
+                case 'Eliminar': accionClass = 'log-action-eliminar'; break;
+                case 'Crear (Movido)': accionClass = 'log-action-crear'; break;
+                case 'Eliminar (Movido)': accionClass = 'log-action-eliminar'; break;
+                default: accionTexto = data.accion;
+            }
 
             html += `
                 <tr>
@@ -696,20 +692,68 @@ document.addEventListener('DOMContentLoaded', () => {
                 </tr>
             `;
         });
-
         els.historyLogTableBody.innerHTML = html;
+    };
+
+
+    // --- Funciones de Control de Sesión ---
+
+    /**
+     * Fuerza el cierre de sesión y notifica al usuario.
+     */
+    const forceLogout = async (message) => {
+        try {
+            await signOut(auth);
+            if (els.loginMessage) showStatus(els.loginMessage, message, false, 5000);
+        } catch (error) {
+            console.error("Error al forzar cierre de sesión:", error);
+        }
+    };
+
+    /**
+     * Reinicia el temporizador de inactividad.
+     */
+    const resetInactivityTimer = () => {
+        if (inactivityTimer) clearTimeout(inactivityTimer);
+        inactivityTimer = setTimeout(() => {
+            forceLogout("Sesión cerrada por inactividad (15 minutos). Por favor, ingresa de nuevo.");
+        }, INACTIVITY_DURATION);
+    };
+
+    /**
+     * Configura los listeners de actividad del usuario.
+     */
+    const setupInactivityLogout = () => {
+        document.addEventListener('mousemove', resetInactivityTimer);
+        document.addEventListener('keypress', resetInactivityTimer);
+        document.addEventListener('click', resetInactivityTimer);
+        document.addEventListener('scroll', resetInactivityTimer);
+        
+        resetInactivityTimer();
+    };
+
+    /**
+     * Configura la persistencia de sesión a 'session' (cierra al cerrar pestaña/navegador).
+     */
+    const setupSessionPersistence = async () => {
+        try {
+            await setPersistence(auth, browserSessionPersistence);
+            console.log("Persistencia de sesión configurada a browserSessionPersistence.");
+        } catch (error) {
+            console.error("Error al configurar la persistencia de Firebase:", error);
+        }
     };
 
 
     // ----- EVENT LISTENERS -----
     try {
-        console.log("Adding event listeners...");
-
         // --- Listeners de Login/Logout ---
         els.loginForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             if (!els.loginEmail || !els.loginPassword || !els.loginBtn || !els.loginMessage) return;
 
+            await setupSessionPersistence(); 
+            
             const email = els.loginEmail.value;
             const password = els.loginPassword.value;
             els.loginBtn.disabled = true;
@@ -733,296 +777,286 @@ document.addEventListener('DOMContentLoaded', () => {
              if (confirmed) {
                  try {
                      await signOut(auth);
-                     allPadsCache = []; 
-                     currentApps = [];
-                     resetFormsAndMode();
-                     updateDashboardStats(); 
-                     currentUserEmail = null; // Limpiar email al salir
                  } catch (error) {
                      console.error("Error al cerrar sesión:", error);
                  }
              }
         });
 
+        // Listener para Ver/Ocultar Contraseña
         els.loginPasswordToggle.addEventListener('click', () => {
-            const input = els.loginPassword;
-            const icon = els.loginPasswordToggle.querySelector('span.material-icons-outlined');
-            if (input.type === "password") {
-                input.type = "text";
-                icon.textContent = "visibility_off";
-                els.loginPasswordToggle.setAttribute('aria-label', 'Ocultar contraseña');
-            } else {
-                input.type = "password";
-                icon.textContent = "visibility";
-                els.loginPasswordToggle.setAttribute('aria-label', 'Mostrar contraseña');
-            }
+             const input = els.loginPassword;
+             const icon = els.loginPasswordToggle.querySelector('span.material-icons-outlined');
+             if (input.type === "password") {
+                 input.type = "text";
+                 icon.textContent = "visibility_off";
+                 els.loginPasswordToggle.setAttribute('aria-label', 'Ocultar contraseña');
+             } else {
+                 input.type = "password";
+                 icon.textContent = "visibility";
+                 els.loginPasswordToggle.setAttribute('aria-label', 'Mostrar contraseña');
+             }
         });
 
         // Modales
         els.confirmModalBtnYes?.addEventListener('click', () => hideCustomConfirm(true));
         els.confirmModalBtnNo?.addEventListener('click', () => hideCustomConfirm(false));
         els.confirmModalOverlay?.addEventListener('click', (e) => {
-            if (e.target === els.confirmModalOverlay) hideCustomConfirm(false);
+             if (e.target === els.confirmModalOverlay) hideCustomConfirm(false);
         });
 
         // Navegación
         els.navItems?.forEach(item => {
-            item.addEventListener('click', (e) => {
-                e.preventDefault();
-                const section = item.dataset?.section;
-                if (section) setActiveSection(section);
-            });
+             item.addEventListener('click', (e) => {
+                 e.preventDefault();
+                 const section = item.dataset?.section;
+                 if (section) setActiveSection(section);
+             });
         });
-
-        // Exportación
-        els.exportJsonBtn.addEventListener('click', exportToJSON);
-        els.exportExcelBtn.addEventListener('click', exportToExcel);
 
         // --- BÚSQUEDA ---
-        els.searchBtn.addEventListener('click', performSearch);
-        els.searchType.addEventListener('change', updateSearchPlaceholder); 
+        els.searchBtn?.addEventListener('click', performSearch);
+        els.searchType?.addEventListener('change', updateSearchPlaceholder); 
         
-        els.searchRef.addEventListener('input', () => {
-            clearTimeout(searchTimeout);
-            searchTimeout = setTimeout(performSearch, 300);
+        els.searchRef?.addEventListener('input', () => {
+             clearTimeout(searchTimeout);
+             searchTimeout = setTimeout(performSearch, 300);
         });
-        els.searchRef.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') { e.preventDefault(); clearTimeout(searchTimeout); performSearch(); }
+        els.searchRef?.addEventListener('keypress', (e) => {
+             if (e.key === 'Enter') { e.preventDefault(); clearTimeout(searchTimeout); performSearch(); }
         });
 
-        els.searchResults.addEventListener('click', (e) => {
-            const targetButton = e.target.closest('.edit-btn');
-            if (targetButton) {
-                const docId = targetButton.dataset.id; 
-                if (docId) {
-                     loadPadDataIntoForms(docId); 
-                }
-            }
+        // Clic Cargar Resultados
+        els.searchResults?.addEventListener('click', (e) => {
+             const targetButton = e.target.closest('.edit-btn');
+             if (targetButton) {
+                 const docId = targetButton.dataset.id; 
+                 if (docId) {
+                      loadPadDataIntoForms(docId); 
+                 }
+             }
         });
 
         // Limpiar Form
-        els.clearSearchBtn.addEventListener('click', resetFormsAndMode);
+        els.clearSearchBtn?.addEventListener('click', resetFormsAndMode);
 
         // Form App Submit
-        els.appForm.addEventListener('submit', (e) => {
-            e.preventDefault();
-            
-            const isAnioValid = validateField(els.appAnio, anioRegex);
-            if (!isAnioValid) {
-                 showStatus(els.savePadStatus, "El formato del Año de la aplicación es incorrecto.", true, 3000);
-                 els.appAnio.focus();
-                 return;
-            }
+        els.appForm?.addEventListener('submit', (e) => {
+             e.preventDefault();
+             
+             const isAnioValid = validateField(els.appAnio, anioRegex);
+             if (!isAnioValid) {
+                  showStatus(els.savePadStatus, "El formato del Año de la aplicación es incorrecto.", true, 3000);
+                  els.appAnio.focus();
+                  return;
+             }
 
-            const app = {
-                marca: els.appMarca.value.trim(),
-                serie: els.appSerie.value.trim(),
-                litros: els.appLitros?.value.trim() || '',
-                año: els.appAnio?.value.trim() || '',
-                especificacion: els.appEspec?.value.trim() || '',
-            };
-            if (!app.marca || !app.serie) {
-                showStatus(els.savePadStatus, "Marca y Serie son obligatorios para la aplicación.", true, 3000);
-                if(!app.marca) els.appMarca?.focus(); else els.appSerie?.focus();
-                return;
-            }
-            if (!Array.isArray(currentApps)) currentApps = [];
-            if (editingAppIndex > -1 && editingAppIndex < currentApps.length) {
-                currentApps[editingAppIndex] = app;
-            } else {
-                currentApps.push(app);
-            }
-            renderCurrentApps();
-            resetAppForm();
-            if(els.appMarca) els.appMarca.focus();
+             const app = {
+                 marca: els.appMarca.value.trim(),
+                 serie: els.appSerie.value.trim(),
+                 litros: els.appLitros?.value.trim() || '',
+                 año: els.appAnio?.value.trim() || '',
+                 especificacion: els.appEspec?.value.trim() || '',
+             };
+             if (!app.marca || !app.serie) {
+                 showStatus(els.savePadStatus, "Marca y Serie son obligatorios para la aplicación.", true, 3000);
+                 if(!app.marca) els.appMarca?.focus(); else els.appSerie?.focus();
+                 return;
+             }
+             if (!Array.isArray(currentApps)) currentApps = [];
+             if (editingAppIndex > -1 && editingAppIndex < currentApps.length) {
+                 currentApps[editingAppIndex] = app;
+             } else {
+                 currentApps.push(app);
+             }
+             renderCurrentApps();
+             resetAppForm();
+             if(els.appMarca) els.appMarca.focus();
         });
 
         // Cancelar Edit App
-        els.cancelEditAppBtn.addEventListener('click', resetAppForm);
+        els.cancelEditAppBtn?.addEventListener('click', resetAppForm);
 
         // Clics Lista Apps (Editar/Eliminar)
-        els.currentAppsList.addEventListener('click', async (e) => {
-            const button = e.target.closest('.app-action-btn');
-            if (!button) return;
-            const indexStr = button.dataset.index;
-            if (!indexStr) return;
-            const index = parseInt(indexStr, 10);
-            if (isNaN(index) || !Array.isArray(currentApps) || index < 0 || index >= currentApps.length) return;
+        els.currentAppsList?.addEventListener('click', async (e) => {
+             const button = e.target.closest('.app-action-btn');
+             if (!button) return;
+             const indexStr = button.dataset.index;
+             if (!indexStr) return;
+             const index = parseInt(indexStr, 10);
+             if (isNaN(index) || !Array.isArray(currentApps) || index < 0 || index >= currentApps.length) return;
 
-            if (button.classList.contains('edit-app-btn')) {
-                loadAppDataIntoForm(index);
-            } else if (button.classList.contains('remove-app-btn')) {
-                const appToRemove = currentApps[index];
-                const message = `¿Seguro que quieres eliminar la aplicación "${appToRemove.marca || ''} ${appToRemove.serie || ''}"?`;
-                const confirmed = await showCustomConfirm(message, "Eliminar Aplicación", "Eliminar", "btn-danger");
-                if (confirmed) {
-                    currentApps.splice(index, 1);
-                    renderCurrentApps();
-                    if (editingAppIndex === index) resetAppForm();
-                    else if (editingAppIndex > index) {
-                        editingAppIndex--; 
-                        if (els.editingAppIndexInput) els.editingAppIndexInput.value = editingAppIndex;
-                    }
-                }
-            }
+             if (button.classList.contains('edit-app-btn')) {
+                 loadAppDataIntoForm(index);
+             } else if (button.classList.contains('remove-app-btn')) {
+                 const appToRemove = currentApps[index];
+                 const message = `¿Seguro que quieres eliminar la aplicación "${appToRemove.marca || ''} ${appToRemove.serie || ''}"?`;
+                 const confirmed = await showCustomConfirm(message, "Eliminar Aplicación", "Eliminar", "btn-danger");
+                 if (confirmed) {
+                     currentApps.splice(index, 1);
+                     renderCurrentApps();
+                     if (editingAppIndex === index) resetAppForm();
+                     else if (editingAppIndex > index) {
+                         editingAppIndex--; 
+                         if (els.editingAppIndexInput) els.editingAppIndexInput.value = editingAppIndex;
+                     }
+                 }
+             }
         });
 
         // --- GUARDAR/ACTUALIZAR PASTILLA (FIREBASE) ---
-        els.savePadBtn.addEventListener('click', async () => {
-            const isMedidasValid = validateField(els.padMedidas, medidasRegex);
-            if (!isMedidasValid) {
-                 showStatus(els.savePadStatus, "El formato de Medidas es incorrecto. Debe ser '100 x 50' o '100 x 50, 110 x 60'.", true, 5000);
-                 els.padMedidas.focus();
+        els.savePadBtn?.addEventListener('click', async () => {
+             const isMedidasValid = validateField(els.padMedidas, medidasRegex);
+             if (!isMedidasValid) {
+                  showStatus(els.savePadStatus, "El formato de Medidas es incorrecto. Debe ser '100 x 50' o '100 x 50, 110 x 60'.", true, 5000);
+                  els.padMedidas.focus();
+                  return;
+             }
+
+             const refsArray = (els.padRef.value || '').split(',').map(s => s.trim()).filter(Boolean);
+             if (refsArray.length === 0) {
+                 showStatus(els.savePadStatus, "La Referencia (ID) es obligatoria.", true);
+                 if(els.padRef.focus) els.padRef.focus();
                  return;
-            }
+             }
+             
+             showStatus(els.savePadStatus, "Guardando en Firebase...", false, 10000);
+             
+             const newPad = {
+                 ref: refsArray,
+                 oem: (els.padOem?.value || '').split(',').map(s => s.trim()).filter(Boolean),
+                 fmsi: (els.padFmsi?.value || '').split(',').map(s => s.trim()).filter(Boolean),
+                 posición: els.padPosicion?.value || 'Delantera',
+                 medidas: (els.padMedidas?.value || '').split(',').map(s => s.trim()).filter(Boolean),
+                 imagenes: (els.padImagenes?.value || '').split(',').map(s => s.trim()).filter(Boolean),
+                 aplicaciones: Array.isArray(currentApps) ? currentApps : [],
+             };
 
-            const refsArray = (els.padRef.value || '').split(',').map(s => s.trim()).filter(Boolean);
-            if (refsArray.length === 0) {
-                showStatus(els.savePadStatus, "La Referencia (ID) es obligatoria.", true);
-                if(els.padRef.focus) els.padRef.focus();
-                return;
-            }
-            
-            showStatus(els.savePadStatus, "Guardando en Firebase...", false, 10000);
-            
-            const newPad = {
-                ref: refsArray,
-                oem: (els.padOem?.value || '').split(',').map(s => s.trim()).filter(Boolean),
-                fmsi: (els.padFmsi?.value || '').split(',').map(s => s.trim()).filter(Boolean),
-                posición: els.padPosicion?.value || 'Delantera',
-                medidas: (els.padMedidas?.value || '').split(',').map(s => s.trim()).filter(Boolean),
-                imagenes: (els.padImagenes?.value || '').split(',').map(s => s.trim()).filter(Boolean),
-                aplicaciones: Array.isArray(currentApps) ? currentApps : [],
-            };
+             const docId = refsArray[0]; 
+             let message = "";
+             let accionLog = "Crear";
 
-            
-            const docId = refsArray[0]; 
-            let message = "";
-            let accionLog = "Crear";
+             try {
+                 if (currentEditingId && currentEditingId !== docId) {
+                     const oldDocRef = doc(db, "pastillas", currentEditingId);
+                     await deleteDoc(oldDocRef);
+                     logHistory("Eliminar (Movido)", currentEditingId); 
+                     
+                     message = `¡Pastilla movida de "${currentEditingId}" a "${docId}"!`;
+                     accionLog = "Crear (Movido)";
+                 
+                 } else if (currentEditingId) {
+                     message = `¡Pastilla "${docId}" actualizada!`;
+                     accionLog = "Actualizar";
+                 
+                 } else {
+                     message = `¡Pastilla "${docId}" creada!`;
+                     accionLog = "Crear";
+                 }
+                 
+                 const newDocRef = doc(db, "pastillas", docId);
+                 await setDoc(newDocRef, newPad);
 
-            try {
-                if (currentEditingId && currentEditingId !== docId) {
-                    const oldDocRef = doc(db, "pastillas", currentEditingId);
-                    await deleteDoc(oldDocRef);
-                    logHistory("Eliminar (Movido)", currentEditingId); 
-                    
-                    message = `¡Pastilla movida de "${currentEditingId}" a "${docId}"!`;
-                    accionLog = "Crear (Movido)";
-                
-                } else if (currentEditingId) {
-                    message = `¡Pastilla "${docId}" actualizada!`;
-                    accionLog = "Actualizar";
-                
-                } else {
-                    message = `¡Pastilla "${docId}" creada!`;
-                    accionLog = "Crear";
-                }
-                
-                const newDocRef = doc(db, "pastillas", docId);
-                await setDoc(newDocRef, newPad);
-                
-                logHistory(accionLog, docId);
+                 logHistory(accionLog, docId);
+                 
+                 resetFormsAndMode();
+                 setActiveSection('dashboard');
+                 showStatus(els.connectionStatusText, message, false);
 
-                resetFormsAndMode();
-                setActiveSection('dashboard');
-                showStatus(els.connectionStatusText, message, false);
-
-            } catch (err) {
-                console.error("Error guardando en Firebase:", err);
-                showStatus(els.savePadStatus, `Error de Firebase: ${err.message}`, true, 6000);
-            }
+             } catch (err) {
+                 console.error("Error guardando en Firebase:", err);
+                 showStatus(els.savePadStatus, `Error de Firebase: ${err.message}`, true, 6000);
+             }
         });
         
         // --- ELIMINAR PASTILLA (FIREBASE) ---
-        els.deletePadBtn.addEventListener('click', async () => {
-            if (!currentEditingId) {
-                showStatus(els.savePadStatus, "No hay pastilla válida cargada para eliminar.", true);
-                return;
-            }
+        els.deletePadBtn?.addEventListener('click', async () => {
+             if (!currentEditingId) {
+                 showStatus(els.savePadStatus, "No hay pastilla válida cargada para eliminar.", true);
+                 return;
+             }
 
-            const refId = currentEditingId;
-            const message = `¿Estás SEGURO de eliminar la pastilla "${refId}" de la base de datos? Esta acción es permanente.`;
-            
-            const confirmed = await showCustomConfirm(message, "Eliminar Pastilla", "Sí, Eliminar", "btn-danger");
-            
-            if (confirmed) {
-                showStatus(els.savePadStatus, "Eliminando de Firebase...", false, 10000);
-                try {
-                    const docRef = doc(db, "pastillas", refId);
-                    await deleteDoc(docRef);
-                    
-                    logHistory("Eliminar", refId);
-                    
-                    showStatus(els.connectionStatusText, `Pastilla "${refId}" eliminada.`, false);
-                    resetFormsAndMode();
-                    setActiveSection('dashboard');
-                
-                } catch (err) {
-                    console.error("Error eliminando de Firebase:", err);
-                    showStatus(els.savePadStatus, `Error de Firebase: ${err.message}`, true, 6000);
-                }
-            }
+             const refId = currentEditingId;
+             const message = `¿Estás SEGURO de eliminar la pastilla "${refId}" de la base de datos? Esta acción es permanente.`;
+             
+             const confirmed = await showCustomConfirm(message, "Eliminar Pastilla", "Sí, Eliminar", "btn-danger");
+             
+             if (confirmed) {
+                 showStatus(els.savePadStatus, "Eliminando de Firebase...", false, 10000);
+                 try {
+                     const docRef = doc(db, "pastillas", refId);
+                     await deleteDoc(docRef);
+                     
+                     logHistory("Eliminar", refId);
+
+                     showStatus(els.connectionStatusText, `Pastilla "${refId}" eliminada.`, false);
+                     resetFormsAndMode();
+                     setActiveSection('dashboard');
+                 
+                 } catch (err) {
+                     console.error("Error eliminando de Firebase:", err);
+                     showStatus(els.savePadStatus, `Error de Firebase: ${err.message}`, true, 6000);
+                 }
+             }
         });
 
         // --- LISTENER: DUPLICAR PASTILLA ---
-        els.duplicatePadBtn.addEventListener('click', () => {
-            if (!currentEditingId) { 
-                showStatus(els.savePadStatus, "Carga una pastilla primero para duplicarla.", true);
-                return;
-            }
-            
-            currentEditingId = null;
-            
-            const firstRefId = els.padRef.value.split(',')[0].trim() || 'pastilla';
-            if (els.formModeTitle) els.formModeTitle.textContent = `Duplicando: ${firstRefId}`;
-            if (els.saveButtonText) els.saveButtonText.textContent = "Guardar como Nueva";
-            
-            if (els.deletePadBtn) els.deletePadBtn.style.display = 'none';
-            if (els.duplicatePadBtn) els.duplicatePadBtn.style.display = 'none';
-
-             if (els.savePadBtn) {
-                 els.savePadBtn.classList.remove('btn-danger', 'btn-secondary');
-                 els.savePadBtn.classList.add('btn-primary');
+        els.duplicatePadBtn?.addEventListener('click', () => {
+             if (!currentEditingId) { 
+                 showStatus(els.savePadStatus, "Carga una pastilla primero para duplicarla.", true);
+                 return;
              }
-            
-            if (els.padRef) els.padRef.focus();
-            showStatus(els.savePadStatus, "Modo 'Duplicar' activado. Cambia la 'Ref' y guarda.", false, 6000);
+             
+             currentEditingId = null;
+             
+             const firstRefId = els.padRef.value.split(',')[0].trim() || 'pastilla';
+             if (els.formModeTitle) els.formModeTitle.textContent = `Duplicando: ${firstRefId}`;
+             if (els.saveButtonText) els.saveButtonText.textContent = "Guardar como Nueva";
+             
+             if (els.deletePadBtn) els.deletePadBtn.style.display = 'none';
+             if (els.duplicatePadBtn) els.duplicatePadBtn.style.display = 'none';
+
+              if (els.savePadBtn) {
+                  els.savePadBtn.classList.remove('btn-danger', 'btn-secondary');
+                  els.savePadBtn.classList.add('btn-primary');
+              }
+             
+             if (els.padRef) els.padRef.focus();
+             showStatus(els.savePadStatus, "Modo 'Duplicar' activado. Cambia la 'Ref' y guarda.", false, 6000);
         });
 
         // --- LISTENER: PREVISUALIZACIÓN DE IMÁGENES ---
         if (els.padImagenes) {
-            els.padImagenes.addEventListener('input', () => {
-                clearTimeout(imagePreviewTimeout);
-                imagePreviewTimeout = setTimeout(renderImagePreview, 300); 
-            });
+             els.padImagenes.addEventListener('input', () => {
+                 clearTimeout(imagePreviewTimeout);
+                 imagePreviewTimeout = setTimeout(renderImagePreview, 300); 
+             });
         }
         
         // --- LISTENERS PARA VALIDACIÓN Y AUTOCOMPLETADO ---
-        if(els.appMarca) {
-            els.appMarca.addEventListener('input', () => updateSerieDatalist(els.appMarca.value.trim()));
-        }
-        if(els.appAnio) {
-            els.appAnio.addEventListener('input', () => validateField(els.appAnio, anioRegex));
-        }
-        if(els.padMedidas) {
-            els.padMedidas.addEventListener('input', () => validateField(els.padMedidas, medidasRegex));
-        }
+        if(els.appMarca) { els.appMarca.addEventListener('input', () => updateSerieDatalist(els.appMarca.value.trim())); }
+        if(els.appAnio) { els.appAnio.addEventListener('input', () => validateField(els.appAnio, anioRegex)); }
+        if(els.padMedidas) { els.padMedidas.addEventListener('input', () => validateField(els.padMedidas, medidasRegex)); }
 
-        // --- LISTENER MODO OSCURO ---
-        els.darkBtn.addEventListener('click', (e) => {
-            createRippleEffect(e);
-            const isDark = document.body.classList.toggle('lp-dark');
-            els.darkBtn?.setAttribute('aria-pressed', String(isDark));
-            const iconAnimation = (icon, isShowing) => {
-                if (!icon) return;
-                icon.style.transition = 'opacity 0.3s ease-in-out, transform 0.3s ease-in-out';
-                icon.style.opacity = isShowing ? '1' : '0';
-                icon.style.transform = isShowing ? 'scale(1)' : 'scale(0.8)';
-            };
-            iconAnimation(els.sunIcon, !isDark);
-            iconAnimation(els.moonIcon, isDark);
-            try { localStorage.setItem('darkModeAdminPref', isDark ? '1' : '0'); }
-            catch (storageError) { console.warn("No se pudo guardar pref modo oscuro:", storageError); }
+        // --- LISTENERS DE EXPORTACIÓN ---
+        els.exportJsonBtn?.addEventListener('click', exportToJSON);
+        els.exportExcelBtn?.addEventListener('click', exportToExcel);
+
+        // --- LISTENER MODO OSCURO (CORREGIDO) ---
+        els.darkBtn?.addEventListener('click', (e) => {
+             createRippleEffect(e);
+             const isDark = document.body.classList.toggle('lp-dark');
+             els.darkBtn?.setAttribute('aria-pressed', String(isDark));
+             const iconAnimation = (icon, isShowing) => {
+                 if (!icon) return;
+                 icon.style.transition = 'opacity 0.3s ease-in-out, transform 0.3s ease-in-out';
+                 icon.style.opacity = isShowing ? '1' : '0';
+                 icon.style.transform = isShowing ? 'scale(1)' : 'scale(0.8)';
+             };
+             iconAnimation(els.sunIcon, !isDark);
+             iconAnimation(els.moonIcon, isDark);
+             try { localStorage.setItem('darkModeAdminPref', isDark ? '1' : '0'); }
+             catch (storageError) { console.warn("No se pudo guardar pref modo oscuro:", storageError); }
         });
         
         console.log("Todos los event listeners configurados.");
@@ -1031,7 +1065,7 @@ document.addEventListener('DOMContentLoaded', () => {
         console.error("Error crítico añadiendo listeners:", error);
     }
 
-    // ----- APLICAR DARK MODE AL CARGAR -----
+    // --- APLICAR DARK MODE AL CARGAR (omitted) ---
     try {
         const savedPref = localStorage.getItem('darkModeAdminPref');
         const prefersDarkScheme = window.matchMedia?.("(prefers-color-scheme: dark)").matches ?? false;
@@ -1042,54 +1076,59 @@ document.addEventListener('DOMContentLoaded', () => {
         if(els.darkBtn) els.darkBtn.setAttribute('aria-pressed', String(startDark));
 
         const initialIconAnimation = (icon, isShowing) => {
-             if (!icon) return;
-             icon.style.transition = 'none';
-             icon.style.opacity = isShowing ? '1' : '0';
-             icon.style.transform = isShowing ? 'scale(1)' : 'scale(0.8)';
+              if (!icon) return;
+              icon.style.transition = 'none';
+              icon.style.opacity = isShowing ? '1' : '0';
+              icon.style.transform = isShowing ? 'scale(1)' : 'scale(0.8)';
         };
         initialIconAnimation(els.sunIcon, !startDark);
         initialIconAnimation(els.moonIcon, startDark);
         requestAnimationFrame(() => {
-             if (els.sunIcon) els.sunIcon.style.transition = '';
-             if (els.moonIcon) els.moonIcon.style.transition = '';
+              if (els.sunIcon) els.sunIcon.style.transition = '';
+              if (els.moonIcon) els.moonIcon.style.transition = '';
         });
     } catch (storageError) { console.warn("No se pudo aplicar pref modo oscuro:", storageError); }
 
+
     // =============================================
-    // Lógica de Inicialización de Firebase (Actualizada)
+    // Lógica de Inicialización de Firebase
     // =============================================
     const initFirebase = () => {
-        try {
-            onAuthStateChanged(auth, (user) => {
-                if (user && !user.isAnonymous) {
-                    // --- Usuario AUTENTICADO ---
-                    console.log("Usuario autenticado:", user.uid, user.email);
-                    currentUserEmail = user.email; // Guardar el email
-                    if(els.mainAppContainer) els.mainAppContainer.style.display = 'block';
-                    if(els.floatingBtnContainer) els.floatingBtnContainer.style.display = 'block';
-                    if(els.loginContainer) els.loginContainer.style.display = 'none';
-                    loadDataFromFirebase();
-                } else {
-                    // --- Usuario NO autenticado ---
-                    console.log("Usuario no logueado.");
-                    currentUserEmail = null; // Limpiar email
-                    if(els.mainAppContainer) els.mainAppContainer.style.display = 'none';
-                    if(els.floatingBtnContainer) els.floatingBtnContainer.style.display = 'none';
-                    if(els.loginContainer) els.loginContainer.style.display = 'flex';
-                }
-            });
-        } catch (err) {
-            console.error("Error inicializando Firebase Auth:", err);
-            if(els.loginMessage) showStatus(els.loginMessage, `Error: ${err.message}`, true, 10000);
-        }
+        onAuthStateChanged(auth, (user) => {
+            if (user && !user.isAnonymous) {
+                // --- Usuario AUTENTICADO ---
+                console.log("Usuario autenticado:", user.uid, user.email);
+                if(els.mainAppContainer) els.mainAppContainer.style.display = 'block';
+                if(els.floatingBtnContainer) els.floatingBtnContainer.style.display = 'block';
+                if(els.loginContainer) els.loginContainer.style.display = 'none';
+                
+                setupInactivityLogout(); 
+
+                loadDataFromFirebase();
+            } else {
+                // --- Usuario NO autenticado ---
+                console.log("Usuario no logueado.");
+                if(els.mainAppContainer) els.mainAppContainer.style.display = 'none';
+                if(els.floatingBtnContainer) els.floatingBtnContainer.style.display = 'none';
+                if(els.loginContainer) els.loginContainer.style.display = 'flex';
+                
+                if (inactivityTimer) clearTimeout(inactivityTimer);
+                inactivityTimer = null;
+
+                allPadsCache = []; 
+                currentApps = []; 
+                resetFormsAndMode();
+                updateDashboardStats();
+                
+            }
+        });
     };
 
     const loadDataFromFirebase = () => {
         // 1. Cargar Pastillas
         const padsCollection = collection(db, "pastillas");
-        
         onSnapshot(padsCollection, (snapshot) => {
-            console.log("Datos recibidos de Firestore (snapshot).");
+            console.log("Datos recibidos de Firestore (pastillas).");
             allPadsCache = snapshot.docs.map(doc => ({
                 id: doc.id, 
                 ...doc.data() 
@@ -1106,7 +1145,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }, (error) => {
             console.error("Error al escuchar datos de Firestore:", error);
             if (error.code === 'permission-denied') {
-                 setConnectionStatus(false, `Error: Permiso denegado. Revisa las reglas de Firestore.`);
+                 setConnectionStatus(false, `Error: Permiso denegado.`);
             } else {
                  setConnectionStatus(false, `Error de Base de Datos: ${error.message}`);
             }
@@ -1160,7 +1199,7 @@ document.addEventListener('DOMContentLoaded', () => {
     try {
         setActiveSection('dashboard');
         updateSearchPlaceholder(); 
-        initFirebase(); // Llamada principal para iniciar todo
+        initFirebase(); 
         console.log("Admin panel UI inicializado, conectando a Firebase...");
     } catch (error) {
         console.error("Error al inicializar UI:", error);

@@ -20,10 +20,12 @@
             getAuth, 
             onAuthStateChanged,
             signInWithEmailAndPassword,
-            signOut
+            signOut,
+            setPersistence, // Nuevo para persistencia de sesión
+            browserSessionPersistence // Nuevo para persistencia de sesión
         } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
         
-        // Imports de Firestore actualizados
+        // Imports de Firestore
         import { 
             getFirestore, collection, doc, setDoc, deleteDoc, onSnapshot, writeBatch, 
             serverTimestamp, addDoc, query, orderBy, limit 
@@ -56,12 +58,14 @@
             writeBatch,
             signInWithEmailAndPassword,
             signOut,
-            // Exponer nuevas herramientas
             serverTimestamp,
             addDoc,
             query,
             orderBy,
-            limit
+            limit,
+            // Nuevos para control de sesión
+            setPersistence,
+            browserSessionPersistence 
         };
     </script>
 </head>
@@ -109,7 +113,7 @@
                 <div class="header-left">
                     <div class="header-logo-group">
                         <span class="material-icons-outlined logo-icon">speed</span>
-                        <span class="logo-text">Brake X Admin 2.3</span>
+                        <span class="logo-text">Brake X Admin 2.4</span>
                     </div>
                     <nav class="nav-menu">
                         <a href="#" class="nav-item active" data-section="dashboard">
@@ -235,6 +239,7 @@
                             </div>
                         </div>
                         
+                        <!-- Columna Lateral (Sidebar) -->
                         <div class="layout-col-sidebar">
                             
                             <div class="card card-sticky"> 
@@ -271,6 +276,7 @@
                     </div> 
                 </div> 
 
+                <!-- Sección de Exportar Datos -->
                 <div id="export-data" class="content-section">
                     <div class="card">
                         <h2 class="card-title">Exportar Datos</h2>
@@ -288,7 +294,7 @@
                     </div>
                 </div>
 
-                <!-- Esta es la sección que faltaba -->
+                <!-- Sección de Historial -->
                 <div id="history-log" class="content-section">
                     <div class="card">
                         <h2 class="card-title">Historial de Cambios</h2>
@@ -303,8 +309,8 @@
                                         <th>Fecha y Hora</th>
                                     </tr>
                                 </thead>
-                                <!-- Este es el ID que tu JS está buscando -->
                                 <tbody id="history-log-table-body">
+                                    <!-- Las filas se insertarán aquí por JS -->
                                     <tr class="empty-row-placeholder">
                                         <td colspan="4">Cargando historial...</td>
                                     </tr>

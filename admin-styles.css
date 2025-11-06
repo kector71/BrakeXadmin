@@ -265,7 +265,7 @@ body {
     font-size: calc(var(--base-font-size) * 0.9); 
     padding: var(--base-padding) calc(var(--base-padding) * 1.25); 
     border-radius: var(--base-radius); 
-    border: 1px solid transparent;
+    border: 1px solid var(--border-color);
 }
 .status-box .material-icons-outlined {
     font-size: calc(var(--base-font-size) * 1.25); 
@@ -322,7 +322,9 @@ body {
     color: var(--text-color-secondary);
 }
 
-/* Evitar Zoom en iOS */
+/* ============================================= */
+/* CORRECCIÓN: Tamaño de Fuente Input para evitar Zoom en iOS
+/* ============================================= */
 .text-input, .select-input {
     width: 100%;
     padding: var(--base-padding) var(--base-gap); 
@@ -331,9 +333,10 @@ body {
     background-color: var(--input-bg);
     color: var(--text-color-primary);
     font-family: var(--font-family);
-    font-size: 16px; /* CAMBIADO DE var(--base-font-size) a 16px */
+    font-size: 16px; /* Forzar 16px para evitar zoom en iOS */
     transition: border-color 0.2s, box-shadow 0.2s, background-color 0.2s;
 }
+/* ============================================= */
 
 .text-input:focus, .select-input:focus {
     outline: none;
@@ -816,10 +819,18 @@ span.ripple {
     .content-header {
         justify-content: center; 
     }
+    
+    /* CORRECCIÓN: Flex-wrap forzado en móvil para que el menú quepa */
     .header-left {
         gap: var(--base-gap); 
         justify-content: center;
         width: 100%; 
+        flex-wrap: wrap; 
+    }
+    .nav-menu {
+        flex-wrap: wrap; /* Permitir que los botones bajen */
+        justify-content: center; /* Centrar los botones */
+        width: 100%; /* Ocupar todo el ancho disponible */
     }
     
     .card-grid.cols-2 { 
@@ -848,7 +859,10 @@ span.ripple {
 }
 
 
-/* Estilos de Inicio de Sesión */
+/* ============================================= */
+/* Estilos de Inicio de Sesión 
+/* ============================================= */
+
 .login-container {
     display: flex;
     align-items: center;
@@ -875,7 +889,10 @@ span.ripple {
     }
 }
 
-/* Estilos para Ver/Ocultar Contraseña */
+
+/* ============================================= */
+/* Estilos para Ver/Ocultar Contraseña 
+/* ============================================= */
 .input-wrapper-relative {
     position: relative;
 }
@@ -904,11 +921,15 @@ span.ripple {
 }
 
 /* Hacer espacio para el botón dentro del input */
+/* Nota: Este estilo ahora está cubierto por el estilo principal de .text-input para el tamaño de fuente, pero se mantiene la corrección de padding. */
 .input-wrapper-relative .text-input {
     padding-right: 40px; 
 }
 
-/* Estilos de la Tabla de Historial */
+
+/* ============================================= */
+/* Estilos de la Tabla de Historial
+/* ============================================= */
 .history-log-table-wrapper {
     width: 100%;
     overflow-x: auto; /* Para responsividad en móviles */
@@ -963,45 +984,28 @@ span.ripple {
     text-transform: uppercase;
 }
 
-.log-action-Crear {
+.log-action-crear {
     color: #2b6cb0; /* Texto azul */
     background-color: #ebf4ff; /* Fondo azul claro */
 }
-.log-action-Actualizar {
+.log-action-actualizar {
     color: #c05621; /* Texto naranja */
     background-color: #fffaf0; /* Fondo naranja claro */
 }
-.log-action-Eliminar {
+.log-action-eliminar {
     color: #9b2c2c; /* Texto rojo */
     background-color: #fff5f5; /* Fondo rojo claro */
 }
-.log-action-Crear-Movido {
-    color: #2b6cb0;
-    background-color: #ebf4ff;
-}
-.log-action-Eliminar-Movido {
-    color: #9b2c2c;
-    background-color: #fff5f5;
-}
 
-
-.lp-dark .log-action-Crear {
+.lp-dark .log-action-crear {
     color: #90cdf4;
     background-color: #2c5282;
 }
-.lp-dark .log-action-Actualizar {
+.lp-dark .log-action-actualizar {
     color: #f6ad55;
     background-color: #702e0c;
 }
-.lp-dark .log-action-Eliminar {
-    color: #feb2b2;
-    background-color: #822727;
-}
-.lp-dark .log-action-Crear-Movido {
-    color: #90cdf4;
-    background-color: #2c5282;
-}
-.lp-dark .log-action-Eliminar-Movido {
+.lp-dark .log-action-eliminar {
     color: #feb2b2;
     background-color: #822727;
 }
