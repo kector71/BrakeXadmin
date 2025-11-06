@@ -322,9 +322,7 @@ body {
     color: var(--text-color-secondary);
 }
 
-/* ============================================= */
-/* CAMBIO: Evitar Zoom en iOS                    */
-/* ============================================= */
+/* Evitar Zoom en iOS */
 .text-input, .select-input {
     width: 100%;
     padding: var(--base-padding) var(--base-gap); 
@@ -333,12 +331,9 @@ body {
     background-color: var(--input-bg);
     color: var(--text-color-primary);
     font-family: var(--font-family);
-    font-size: 16px; /* <-- CAMBIADO DE var(--base-font-size) a 16px */
+    font-size: 16px; /* CAMBIADO DE var(--base-font-size) a 16px */
     transition: border-color 0.2s, box-shadow 0.2s, background-color 0.2s;
 }
-/* ============================================= */
-/* FIN DEL CAMBIO                             */
-/* ============================================= */
 
 .text-input:focus, .select-input:focus {
     outline: none;
@@ -853,10 +848,7 @@ span.ripple {
 }
 
 
-/* ============================================= */
-/* Estilos de Inicio de Sesión                   */
-/* ============================================= */
-
+/* Estilos de Inicio de Sesión */
 .login-container {
     display: flex;
     align-items: center;
@@ -883,9 +875,7 @@ span.ripple {
     }
 }
 
-/* ============================================= */
-/* Estilos para Ver/Ocultar Contraseña          */
-/* ============================================= */
+/* Estilos para Ver/Ocultar Contraseña */
 .input-wrapper-relative {
     position: relative;
 }
@@ -916,4 +906,110 @@ span.ripple {
 /* Hacer espacio para el botón dentro del input */
 .input-wrapper-relative .text-input {
     padding-right: 40px; 
+}
+
+/* Estilos de la Tabla de Historial */
+.history-log-table-wrapper {
+    width: 100%;
+    overflow-x: auto; /* Para responsividad en móviles */
+    border: 1px solid var(--border-color);
+    border-radius: var(--base-radius);
+    max-height: 60vh; /* Limitar altura y permitir scroll vertical */
+    overflow-y: auto;
+}
+
+.history-log-table {
+    width: 100%;
+    border-collapse: collapse; /* Bordes limpios */
+}
+
+.history-log-table th,
+.history-log-table td {
+    padding: calc(var(--base-padding) * 1.2) var(--base-gap);
+    text-align: left;
+    border-bottom: 1px solid var(--border-color);
+    font-size: 0.85rem;
+    white-space: nowrap; /* Evitar que el texto se parta */
+}
+
+.history-log-table th {
+    font-weight: 600;
+    color: var(--text-color-secondary);
+    background-color: var(--bg-color);
+    position: sticky; /* Encabezados fijos */
+    top: 0;
+}
+
+.history-log-table tbody tr:last-child td {
+    border-bottom: none; /* Quitar borde de la última fila */
+}
+
+.history-log-table tbody tr:hover {
+    background-color: var(--bg-color);
+}
+
+.history-log-table .empty-row-placeholder td {
+    text-align: center;
+    color: var(--text-color-secondary);
+    padding: calc(var(--base-padding) * 3);
+}
+
+.log-action {
+    font-weight: 600;
+    padding: 0.2em 0.5em;
+    border-radius: 4px;
+    display: inline-block;
+    font-size: 0.8rem;
+    text-transform: uppercase;
+}
+
+.log-action-Crear {
+    color: #2b6cb0; /* Texto azul */
+    background-color: #ebf4ff; /* Fondo azul claro */
+}
+.log-action-Actualizar {
+    color: #c05621; /* Texto naranja */
+    background-color: #fffaf0; /* Fondo naranja claro */
+}
+.log-action-Eliminar {
+    color: #9b2c2c; /* Texto rojo */
+    background-color: #fff5f5; /* Fondo rojo claro */
+}
+.log-action-Crear-Movido {
+    color: #2b6cb0;
+    background-color: #ebf4ff;
+}
+.log-action-Eliminar-Movido {
+    color: #9b2c2c;
+    background-color: #fff5f5;
+}
+
+
+.lp-dark .log-action-Crear {
+    color: #90cdf4;
+    background-color: #2c5282;
+}
+.lp-dark .log-action-Actualizar {
+    color: #f6ad55;
+    background-color: #702e0c;
+}
+.lp-dark .log-action-Eliminar {
+    color: #feb2b2;
+    background-color: #822727;
+}
+.lp-dark .log-action-Crear-Movido {
+    color: #90cdf4;
+    background-color: #2c5282;
+}
+.lp-dark .log-action-Eliminar-Movido {
+    color: #feb2b2;
+    background-color: #822727;
+}
+
+.lp-dark .history-log-table th {
+    background-color: #384357; /* Un poco más oscuro que el fondo de la tarjeta */
+}
+
+.lp-dark .history-log-table tbody tr:hover {
+    background-color: #333d4f;
 }
