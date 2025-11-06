@@ -626,7 +626,7 @@ Interpreta los años "10-15" como "2010-2015". Si falta un dato (como 'litros'),
             }
         };
 
-        const apiKey = ""; // API key se inyecta automáticamente
+        const apiKey = "AIzaSyA5kSMfOkKvHe0dhmaXC-zBSzVQD8ev8-k"; 
         const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
 
         try {
