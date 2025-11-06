@@ -11,12 +11,18 @@ const {
     onSnapshot,
     onAuthStateChanged,
     signInWithEmailAndPassword,
-    signOut
+    signOut,
+    // Nuevas herramientas para el historial
+    serverTimestamp,
+    addDoc,
+    query,
+    orderBy,
+    limit
 } = window.firebaseTools;
 
 
 document.addEventListener('DOMContentLoaded', () => {
-    console.log("Admin script 2.2 (No-AI) loaded. DOM ready.");
+    console.log("Admin script 2.3 (History Log) loaded. DOM ready.");
 
     // ----- VARIABLES GLOBALES -----
     let allPadsCache = []; 
@@ -27,6 +33,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let autocompleteData = {}; 
     let imagePreviewTimeout; 
     let searchTimeout; 
+    let currentUserEmail = null; // Guardar el email del usuario logueado
 
     // --- Expresiones Regulares para Validación ---
     const anioRegex = /^(?:(\d{2}|\d{4})(?:-(\d{2}|\d{4}))?)$/; // Ej: 99 o 1999 o 99-05 o 1999-2005
@@ -57,13 +64,14 @@ document.addEventListener('DOMContentLoaded', () => {
             padCountDashboard: document.getElementById('pad-count-dashboard'),
             appsTotalDashboard: document.getElementById('apps-total-dashboard'),
             
-            // Botones de Exportación
+            // --- Exportación ---
             exportJsonBtn: document.getElementById('export-json-btn'),
             exportExcelBtn: document.getElementById('export-excel-btn'),
             
             connectionStatus: document.getElementById('connection-status'),
             connectionStatusText: document.getElementById('connection-status-text'),
 
+            // --- Búsqueda y Formulario Principal ---
             searchRef: document.getElementById('search-ref'),
             searchType: document.getElementById('search-type'), 
             searchBtn: document.getElementById('search-btn'),
@@ -81,6 +89,8 @@ document.addEventListener('DOMContentLoaded', () => {
             padMedidas: document.getElementById('pad-medidas'), 
             padImagenes: document.getElementById('pad-imagenes'),
             imagePreviewContainer: document.getElementById('image-preview-container'),
+            
+            // --- Formulario de Apps ---
             appForm: document.getElementById('app-form'),
             editingAppIndexInput: document.getElementById('editing-app-index'),
             appMarca: document.getElementById('app-marca'),
@@ -92,31 +102,40 @@ document.addEventListener('DOMContentLoaded', () => {
             addAppButtonText: document.getElementById('add-app-button-text'),
             cancelEditAppBtn: document.getElementById('cancel-edit-app-btn'),
             currentAppsList: document.getElementById('current-apps-list'),
+
+            // --- Acciones de Guardado ---
             savePadBtn: document.getElementById('save-pad-btn'),
             deletePadBtn: document.getElementById('delete-pad-btn'),
             duplicatePadBtn: document.getElementById('duplicate-pad-btn'), 
+            savePadStatus: document.getElementById('save-pad-status'),
             
+            // --- Modo Oscuro y Modal ---
             darkBtn: document.getElementById('darkBtn'),
             sunIcon: document.querySelector('.lp-icon-sun'),
             moonIcon: document.querySelector('.lp-icon-moon'),
-
-            savePadStatus: document.getElementById('save-pad-status'),
             confirmModalOverlay: document.getElementById('confirm-modal-overlay'),
             confirmModalContent: document.querySelector('#confirm-modal-content'),
             confirmModalTitle: document.getElementById('confirm-modal-title'),
             confirmModalMessage: document.getElementById('confirm-modal-message'),
             confirmModalBtnYes: document.getElementById('confirm-modal-btn-yes'),
             confirmModalBtnNo: document.getElementById('confirm-modal-btn-no'),
+
+            // --- Autocompletado ---
             marcasList: document.getElementById('marcas-list'), 
-            seriesList: document.getElementById('series-list') 
+            seriesList: document.getElementById('series-list'),
+
+            // --- Historial ---
+            historyLogTableBody: document.getElementById('history-log-table-body')
         };
         
-        if (!els.loginContainer || !els.mainAppContainer || !els.pageTitle || !els.exportJsonBtn) {
+        // Revisar elementos cruciales
+        if (!els.loginContainer || !els.mainAppContainer || !els.pageTitle || !els.exportJsonBtn || !els.historyLogTableBody) {
              throw new Error("Elementos esenciales del layout o formulario no encontrados.");
         }
         console.log("DOM elements obtained successfully.");
     } catch (error) {
         console.error("Error obtaining DOM elements:", error);
+        console.error("Error crítico: No se encontraron elementos HTML necesarios. Revisa IDs.");
         return; 
     }
 
@@ -532,12 +551,7 @@ document.addEventListener('DOMContentLoaded', () => {
         circle.addEventListener('animationend', () => { if (circle.parentNode) circle.remove(); }, { once: true });
     };
 
-    
     // --- Funciones de Exportación ---
-
-    /**
-     * Crea un enlace de descarga para un blob de datos.
-     */
     const downloadBlob = (blob, filename) => {
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
@@ -549,9 +563,6 @@ document.addEventListener('DOMContentLoaded', () => {
         URL.revokeObjectURL(url);
     };
 
-    /**
-     * Exporta allPadsCache a un archivo JSON.
-     */
     const exportToJSON = () => {
         if (allPadsCache.length === 0) {
             showStatus(els.connectionStatusText, "No hay datos para exportar.", true, 3000);
@@ -568,16 +579,12 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
-    /**
-     * Exporta allPadsCache a un archivo Excel (.xlsx) con dos hojas.
-     */
     const exportToExcel = () => {
         if (allPadsCache.length === 0) {
             showStatus(els.connectionStatusText, "No hay datos para exportar.", true, 3000);
             return;
         }
 
-        // Comprobar si la librería XLSX (SheetJS) está cargada
         if (typeof XLSX === 'undefined') {
             console.error("La librería XLSX (SheetJS) no está cargada.");
             showStatus(els.connectionStatusText, "Error: La librería de exportación no cargó. Refresca la página.", true, 5000);
@@ -585,7 +592,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         try {
-            // 1. Preparar datos para la hoja "Pastillas"
             const padsData = allPadsCache.map(pad => ({
                 id: pad.id,
                 ref: (pad.ref || []).join(', '),
@@ -597,13 +603,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 num_apps: (pad.aplicaciones || []).length
             }));
 
-            // 2. Preparar datos para la hoja "Aplicaciones"
             const appsData = [];
             allPadsCache.forEach(pad => {
                 if (Array.isArray(pad.aplicaciones)) {
                     pad.aplicaciones.forEach(app => {
                         appsData.push({
-                            pad_id: pad.id, // ID de referencia
+                            pad_id: pad.id, 
                             marca: app.marca || '',
                             serie: app.serie || '',
                             litros: app.litros || '',
@@ -614,16 +619,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             });
 
-            // 3. Crear las hojas de cálculo
             const wsPads = XLSX.utils.json_to_sheet(padsData);
             const wsApps = XLSX.utils.json_to_sheet(appsData);
-
-            // 4. Crear el libro de trabajo y añadir las hojas
             const wb = XLSX.utils.book_new();
             XLSX.utils.book_append_sheet(wb, wsPads, "Pastillas");
             XLSX.utils.book_append_sheet(wb, wsApps, "Aplicaciones");
-
-            // 5. Escribir y descargar el archivo
             XLSX.writeFile(wb, `brakeX_export_${new Date().toISOString().split('T')[0]}.xlsx`);
             
             showStatus(els.connectionStatusText, "Exportación Excel exitosa.", false, 3000);
@@ -632,6 +632,72 @@ document.addEventListener('DOMContentLoaded', () => {
             console.error("Error al exportar Excel:", error);
             showStatus(els.connectionStatusText, "Error al generar el archivo Excel.", true, 3000);
         }
+    };
+
+
+    // --- Funciones de Historial ---
+    const logHistory = async (accion, padId) => {
+        try {
+            if (!currentUserEmail) {
+                console.warn("Intento de log sin email de usuario.");
+                return;
+            }
+
+            const historyCollection = collection(db, "historial");
+            await addDoc(historyCollection, {
+                usuarioEmail: currentUserEmail,
+                accion: accion,
+                padId: padId,
+                timestamp: serverTimestamp()
+            });
+
+        } catch (error) {
+            console.error("Error al escribir en el historial:", error);
+        }
+    };
+
+    const renderHistoryLog = (historyDocs) => {
+        if (!els.historyLogTableBody) return;
+
+        if (historyDocs.length === 0) {
+            els.historyLogTableBody.innerHTML = `
+                <tr class="empty-row-placeholder">
+                    <td colspan="4">No hay historial de cambios todavía.</td>
+                </tr>`;
+            return;
+        }
+
+        let html = '';
+        historyDocs.forEach(doc => {
+            const data = doc.data();
+            
+            let fechaFormateada = 'Procesando...';
+            if (data.timestamp) {
+                fechaFormateada = data.timestamp.toDate().toLocaleString('es-ES', {
+                    day: '2-digit',
+                    month: '2-digit',
+                    year: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    second: '2-digit'
+                });
+            }
+
+            // Mapear acción a clase CSS
+            let accionClass = `log-action-${data.accion.replace(' (', '-').replace(')', '')}`;
+            let accionTexto = data.accion;
+
+            html += `
+                <tr>
+                    <td>${data.usuarioEmail || 'N/A'}</td>
+                    <td><span class="log-action ${accionClass}">${accionTexto}</span></td>
+                    <td>${data.padId || 'N/A'}</td>
+                    <td>${fechaFormateada}</td>
+                </tr>
+            `;
+        });
+
+        els.historyLogTableBody.innerHTML = html;
     };
 
 
@@ -668,9 +734,10 @@ document.addEventListener('DOMContentLoaded', () => {
                  try {
                      await signOut(auth);
                      allPadsCache = []; 
-                     currentApps = []; 
-                     resetFormsAndMode(); 
+                     currentApps = [];
+                     resetFormsAndMode();
                      updateDashboardStats(); 
+                     currentUserEmail = null; // Limpiar email al salir
                  } catch (error) {
                      console.error("Error al cerrar sesión:", error);
                  }
@@ -707,7 +774,7 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         });
 
-        // Listeners de Exportación
+        // Exportación
         els.exportJsonBtn.addEventListener('click', exportToJSON);
         els.exportExcelBtn.addEventListener('click', exportToExcel);
 
@@ -733,6 +800,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
 
+        // Limpiar Form
         els.clearSearchBtn.addEventListener('click', resetFormsAndMode);
 
         // Form App Submit
@@ -830,25 +898,33 @@ document.addEventListener('DOMContentLoaded', () => {
             
             const docId = refsArray[0]; 
             let message = "";
+            let accionLog = "Crear";
 
             try {
                 if (currentEditingId && currentEditingId !== docId) {
-                    // Si la Ref principal (ID) cambió, borramos la antigua y creamos una nueva
                     const oldDocRef = doc(db, "pastillas", currentEditingId);
                     await deleteDoc(oldDocRef);
+                    logHistory("Eliminar (Movido)", currentEditingId); 
+                    
                     message = `¡Pastilla movida de "${currentEditingId}" a "${docId}"!`;
+                    accionLog = "Crear (Movido)";
+                
                 } else if (currentEditingId) {
                     message = `¡Pastilla "${docId}" actualizada!`;
+                    accionLog = "Actualizar";
+                
                 } else {
                     message = `¡Pastilla "${docId}" creada!`;
+                    accionLog = "Crear";
                 }
                 
                 const newDocRef = doc(db, "pastillas", docId);
-                await setDoc(newDocRef, newPad); // setDoc crea o sobrescribe
+                await setDoc(newDocRef, newPad);
                 
+                logHistory(accionLog, docId);
+
                 resetFormsAndMode();
                 setActiveSection('dashboard');
-                
                 showStatus(els.connectionStatusText, message, false);
 
             } catch (err) {
@@ -874,6 +950,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 try {
                     const docRef = doc(db, "pastillas", refId);
                     await deleteDoc(docRef);
+                    
+                    logHistory("Eliminar", refId);
                     
                     showStatus(els.connectionStatusText, `Pastilla "${refId}" eliminada.`, false);
                     resetFormsAndMode();
@@ -903,8 +981,8 @@ document.addEventListener('DOMContentLoaded', () => {
             if (els.duplicatePadBtn) els.duplicatePadBtn.style.display = 'none';
 
              if (els.savePadBtn) {
-                  els.savePadBtn.classList.remove('btn-danger', 'btn-secondary');
-                  els.savePadBtn.classList.add('btn-primary');
+                 els.savePadBtn.classList.remove('btn-danger', 'btn-secondary');
+                 els.savePadBtn.classList.add('btn-primary');
              }
             
             if (els.padRef) els.padRef.focus();
@@ -946,7 +1024,7 @@ document.addEventListener('DOMContentLoaded', () => {
             try { localStorage.setItem('darkModeAdminPref', isDark ? '1' : '0'); }
             catch (storageError) { console.warn("No se pudo guardar pref modo oscuro:", storageError); }
         });
-
+        
         console.log("Todos los event listeners configurados.");
 
     } catch (error) {
@@ -978,7 +1056,7 @@ document.addEventListener('DOMContentLoaded', () => {
     } catch (storageError) { console.warn("No se pudo aplicar pref modo oscuro:", storageError); }
 
     // =============================================
-    // Lógica de Inicialización de Firebase
+    // Lógica de Inicialización de Firebase (Actualizada)
     // =============================================
     const initFirebase = () => {
         try {
@@ -986,6 +1064,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (user && !user.isAnonymous) {
                     // --- Usuario AUTENTICADO ---
                     console.log("Usuario autenticado:", user.uid, user.email);
+                    currentUserEmail = user.email; // Guardar el email
                     if(els.mainAppContainer) els.mainAppContainer.style.display = 'block';
                     if(els.floatingBtnContainer) els.floatingBtnContainer.style.display = 'block';
                     if(els.loginContainer) els.loginContainer.style.display = 'none';
@@ -993,6 +1072,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 } else {
                     // --- Usuario NO autenticado ---
                     console.log("Usuario no logueado.");
+                    currentUserEmail = null; // Limpiar email
                     if(els.mainAppContainer) els.mainAppContainer.style.display = 'none';
                     if(els.floatingBtnContainer) els.floatingBtnContainer.style.display = 'none';
                     if(els.loginContainer) els.loginContainer.style.display = 'flex';
@@ -1005,6 +1085,7 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     const loadDataFromFirebase = () => {
+        // 1. Cargar Pastillas
         const padsCollection = collection(db, "pastillas");
         
         onSnapshot(padsCollection, (snapshot) => {
@@ -1030,6 +1111,27 @@ document.addEventListener('DOMContentLoaded', () => {
                  setConnectionStatus(false, `Error de Base de Datos: ${error.message}`);
             }
         });
+
+        // 2. Cargar Historial
+        try {
+            const historyCollection = collection(db, "historial");
+            const historyQuery = query(historyCollection, orderBy("timestamp", "desc"), limit(50));
+            
+            onSnapshot(historyQuery, (snapshot) => {
+                console.log("Datos de historial recibidos.");
+                renderHistoryLog(snapshot.docs);
+            }, (error) => {
+                console.error("Error al cargar el historial:", error);
+                if(els.historyLogTableBody) {
+                    els.historyLogTableBody.innerHTML = `
+                        <tr class="empty-row-placeholder">
+                            <td colspan="4">Error al cargar el historial: ${error.message}</td>
+                        </tr>`;
+                }
+            });
+        } catch (error) {
+            console.error("Error al configurar el listener de historial:", error);
+        }
     };
 
     const setConnectionStatus = (isSuccess, message) => {
@@ -1058,7 +1160,7 @@ document.addEventListener('DOMContentLoaded', () => {
     try {
         setActiveSection('dashboard');
         updateSearchPlaceholder(); 
-        initFirebase(); // <-- Llamada principal para iniciar todo
+        initFirebase(); // Llamada principal para iniciar todo
         console.log("Admin panel UI inicializado, conectando a Firebase...");
     } catch (error) {
         console.error("Error al inicializar UI:", error);
