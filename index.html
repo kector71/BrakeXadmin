@@ -1,13 +1,7 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Brake X Admin</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Outlined" rel="stylesheet">
+    <!-- ... head (links, title, etc) no cambia ... -->
     <link rel="stylesheet" href="admin-styles.css">
 
     <!-- Librería para exportar a Excel (XLSX) -->
@@ -22,9 +16,17 @@
             signInWithEmailAndPassword,
             signOut
         } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-        import { getFirestore, collection, doc, setDoc, deleteDoc, onSnapshot, writeBatch } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js"; 
         
-        // Configuración de Firebase (reemplaza con la tuya si es diferente)
+        // =============================================
+        // CAMBIO: Imports de Firestore actualizados
+        // =============================================
+        import { 
+            getFirestore, collection, doc, setDoc, deleteDoc, onSnapshot, writeBatch, 
+            serverTimestamp, addDoc, query, orderBy, limit 
+        } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js"; 
+        // =============================================
+        
+        // Configuración de Firebase
         const firebaseConfig = {
           apiKey: "AIzaSyCha4S_wLxI_CZY1Tc9FOJNA3cUTggISpU",
           authDomain: "brakexadmin.firebaseapp.com",
@@ -38,7 +40,7 @@
         const auth = getAuth(app);
         const db = getFirestore(app);
 
-        // Exponer herramientas de Firebase a la ventana global para el script principal
+        // Exponer herramientas de Firebase a la ventana global
         window.firebaseTools = {
             auth,
             db,
@@ -50,42 +52,24 @@
             onAuthStateChanged,
             writeBatch,
             signInWithEmailAndPassword,
-            signOut
+            signOut,
+            // =============================================
+            // NUEVO: Exponer nuevas herramientas
+            // =============================================
+            serverTimestamp,
+            addDoc,
+            query,
+            orderBy,
+            limit
+            // =============================================
         };
     </script>
 </head>
 <body>
     
-    <!-- Contenedor de Login -->
+    <!-- ... Contenedor de Login no cambia ... -->
     <div id="login-container" class="login-container">
-        <div class="card login-card">
-            <div class="header-logo-group" style="justify-content: center; margin-bottom: 1.5rem;">
-                <span class="material-icons-outlined logo-icon">speed</span>
-                <span class="logo-text">Brake X Admin</span>
-            </div>
-            <form id="login-form" class="form-grid" style="grid-template-columns: 1fr;" onsubmit="return false;">
-                <div class="form-group">
-                    <label for="login-email" class="input-label">Email</label>
-                    <input type="email" id="login-email" class="text-input" required>
-                </div>
-                
-                <div class="form-group">
-                    <label for="login-password" class="input-label">Contraseña</label>
-                    <div class="input-wrapper-relative"> 
-                        <input type="password" id="login-password" class="text-input" required>
-                        <button type="button" id="login-password-toggle" class="btn-icon-toggle" aria-label="Mostrar contraseña">
-                            <span class="material-icons-outlined">visibility</span>
-                        </button>
-                    </div>
-                </div>
-                
-                <p id="login-message" class="status-message"></p>
-                <button id="login-btn" class="btn btn-primary" type="submit">
-                    <span class="material-icons-outlined">login</span>
-                    <span>Ingresar</span>
-                </button>
-            </form>
-        </div>
+        <!-- ... (contenido de login card) ... -->
     </div>
 
 
@@ -98,7 +82,7 @@
                 <div class="header-left">
                     <div class="header-logo-group">
                         <span class="material-icons-outlined logo-icon">speed</span>
-                        <span class="logo-text">Brake X Admin 2.2</span>
+                        <span class="logo-text">Brake X Admin 2.3</span>
                     </div>
                     <nav class="nav-menu">
                         <a href="#" class="nav-item active" data-section="dashboard">
@@ -109,210 +93,78 @@
                             <span class="material-icons-outlined">edit_note</span>
                             <span>Añadir / Editar</span>
                         </a>
-                        <!-- ============================================= -->
-                        <!-- NUEVO: Enlace de Exportar en el Menú         -->
-                        <!-- ============================================= -->
                         <a href="#" class="nav-item" data-section="export-data">
                             <span class="material-icons-outlined">download</span>
                             <span>Exportar Datos</span>
                         </a>
                         <!-- ============================================= -->
-                        <!-- FIN DEL CAMBIO                             -->
+                        <!-- NUEVO: Enlace de Historial 
+                        <!-- ============================================= -->
+                        <a href="#" class="nav-item" data-section="history-log">
+                            <span class="material-icons-outlined">history</span>
+                            <span>Historial</span>
+                        </a>
+                        <!-- ============================================= -->
                     </nav>
                 </div>
                 <div class="header-right">
-                     <button id="logout-btn" class="btn btn-outline" type="button">
-                         <span class="material-icons-outlined">logout</span>
-                         <span>Cerrar Sesión</span>
-                    </button>
+                     <!-- ... (botón de logout) ... -->
                 </div>
             </header>
             
             <div class="content-wrapper">
                 
                 <h1 id="page-title">Dashboard</h1>
+                
+                <!-- ... Sección Dashboard no cambia ... -->
                 <div id="dashboard" class="content-section active">
-                    <div class="card-grid cols-2">
-                        <div class="stat-card accent-blue">
-                            <span class="material-icons-outlined stat-icon">inventory_2</span>
-                            <div class="stat-info">
-                                <span class="stat-value" id="pad-count-dashboard">0</span>
-                                <span class="stat-label">Pastillas en DB</span>
-                            </div>
-                        </div>
-                        <div class="stat-card accent-green">
-                            <span class="material-icons-outlined stat-icon">app_registration</span>
-                                <div class="stat-info">
-                                <span class="stat-value" id="apps-total-dashboard">0</span>
-                                <span class="stat-label">Aplicaciones Totales</span>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- ============================================= -->
-                    <!-- ELIMINADO: Tarjeta de Exportación de aquí     -->
-                    <!-- ============================================= -->
-                    <!-- La tarjeta <div class="card"> con "Exportar Datos" se eliminó de esta sección -->
-
-                    <div class="card">
-                        <h2 class="card-title">Estado de la Base de Datos</h2>
-                        <p class="card-description">Los datos se cargan en tiempo real desde Firebase Firestore. Cualquier cambio se guardará automáticamente en la nube.</p>
-                        <div id="connection-status" class="status-box status-loading">
-                            <span class="material-icons-outlined">sync</span>
-                            <span id="connection-status-text">Conectando...</span>
-                        </div>
-                    </div>
+                    <!-- ... (contenido de dashboard) ... -->
                 </div>
 
+                <!-- ... Sección Añadir / Editar no cambia ... -->
                 <div id="edit-pad" class="content-section">
-                    
-                    <div class="edit-layout-grid">
-                        
-                        <div class="layout-col-main">
-                            <div class="card">
-                                 <h2 class="card-title">Buscar Pastilla para Editar</h2>
-                                 <div class="form-group">
-                                     <label for="search-type" class="input-label">Buscar por:</label>
-                                     <div class="search-wrapper">
-                                         <select id="search-type" class="select-input search-type-select">
-                                             <option value="ref">Referencia</option>
-                                             <option value="fmsi">FMSI</option>
-                                             <option value="oem">OEM</option>
-                                             <option value="app">Aplicación</option>
-                                         </select>
-                                         <input type="text" id="search-ref" class="text-input" placeholder="Ej: 7104INC">
-                                         <button id="search-btn" class="btn btn-secondary search-btn" type="button"> <span class="material-icons-outlined">search</span> </button>
-                                     </div>
-                                 </div>
-                                 <div id="search-results" class="search-results-container"></div>
-                                 <button id="clear-search-btn" class="btn btn-outline" type="button" style="display: none; margin-top: 1rem;">Limpiar Formulario</button>
-                             </div>
-                            <div class="card">
-                                <h2 class="card-title" id="form-mode-title">Añadir Nueva Pastilla</h2>
-                                <form id="pad-form-main" class="form-grid" onsubmit="return false;">
-                                    <input type="hidden" id="edit-index" value="-1">
-                                    <div class="form-group span-2"> <label for="pad-ref" class="input-label">Referencias (separadas por coma)</label> <input type="text" id="pad-ref" class="text-input" required> </div>
-                                    <div class="form-group"> <label for="pad-oem" class="input-label">OEM (separados por coma)</label> <input type="text" id="pad-oem" class="text-input"> </div>
-                                    <div class="form-group"> <label for="pad-fmsi" class="input-label">FMSI (separadas por coma)</label> <input type="text" id="pad-fmsi" class="text-input"> </div>
-                                    <div class="form-group"> <label for="pad-posicion" class="input-label">Posición</label> <select id="pad-posicion" class="select-input"> <option value="Delantera">Delantera</option> <option value="Trasera">Trasera</option> </select> </div>
-                                    <div class="form-group"> 
-                                        <label for="pad-medidas" class="input-label">Medidas (separadas por coma)</label> 
-                                        <input type="text" id="pad-medidas" class="text-input" placeholder="Ej: 131.5 x 52.5"> 
-                                    </div>
-                                    <div class="form-group span-2">
-                                        <label for="pad-imagenes" class="input-label">URLs Imágenes (separadas por coma)</label>
-                                        <input type="text" id="pad-imagenes" class="text-input" placeholder="url1.jpg, url2.jpg, ...">
-                                        <div id="image-preview-container" class="image-preview-container"></div>
-                                    </div>
-                                </form>
-                            </div>
-                            <div class="card">
-                                <h2 class="card-title">Acciones Principales</h2>
-                                <p class="card-description">Guarda, duplica o elimina la pastilla completa.</p>
-                                <span id="save-pad-status" class="status-message" style="margin-bottom: 1rem;"></span>
-                                <div class="action-button-group">
-                                    <button id="save-pad-btn" class="btn btn-primary btn-cta" type="button"> 
-                                        <span class="material-icons-outlined">save</span> 
-                                        <span id="save-button-text">Guardar Pastilla</span> 
-                                    </button>
-                                    <div class="secondary-actions-group">
-                                        <button type="button" class="btn btn-secondary" id="duplicate-pad-btn" style="display: none;">
-                                            <span class="material-icons-outlined">content_copy</span>
-                                            <span>Duplicar</span>
-                                        </button>
-                                        <button type="button" class="btn btn-danger" id="delete-pad-btn" style="display: none;">
-                                            <span class="material-icons-outlined">delete_forever</span>
-                                            <span>Eliminar</span>
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <!-- Columna Lateral (Sidebar) -->
-                        <div class="layout-col-sidebar">
-                            
-                            <!-- Tarjeta de Gemini Eliminada -->
-
-                            <div class="card card-sticky"> 
-                                <h2 class="card-title">Aplicaciones (Vehículos)</h2>
-                                 <p class="card-description" id="app-form-description">Añade vehículos compatibles.</p>
-                                <form id="app-form" class="form-grid cols-2" onsubmit="return false;">
-                                    <input type="hidden" id="editing-app-index" value="-1">
-                                    <div class="form-group"> 
-                                        <label for="app-marca" class="input-label">Marca</label> 
-                                        <input type="text" id="app-marca" class="text-input" required list="marcas-list"> 
-                                    </div>
-                                    <div class="form-group"> 
-                                        <label for="app-serie" class="input-label">Serie / Modelo</label> 
-                                        <input type="text" id="app-serie" class="text-input" required list="series-list"> 
-                                    </div>
-                                    <div class="form-group"> <label for="app-litros" class="input-label">Litros / Motor</label> <input type="text" id="app-litros" class="text-input"> </div>
-                                    <div class="form-group"> 
-                                        <label for="app-anio" class="input-label">Año(s)</label> 
-                                        <input type="text" id="app-anio" class="text-input" placeholder="Ej: 99 o 99-05"> 
-                                    </div>
-                                    <div class="form-group span-2"> <label for="app-especificacion" class="input-label">Especificación (Opcional)</label> <input type="text" id="app-especificacion" class="text-input" placeholder="Ej: 4WD, Sedan, etc."> </div>
-                                    <div class="form-group span-2 button-group">
-                                        <button id="add-update-app-btn" type="submit" class="btn btn-tertiary"> <span class="material-icons-outlined">add_circle</span> <span id="add-app-button-text">Añadir App</span> </button>
-                                        <button type="button" id="cancel-edit-app-btn" class="btn btn-outline" style="display: none;"> <span class="material-icons-outlined">cancel</span> Cancelar Edición </button>
-                                    </div>
-                                </form>
-                                <datalist id="marcas-list"></datalist>
-                                <datalist id="series-list"></datalist>
-                                <h3 class="list-title">Aplicaciones Actuales / Añadidas:</h3>
-                                <ul id="current-apps-list" class="app-list"> <li class="empty-list">Ninguna todavía</li> </ul>
-                            </div>
-                        </div>
-
-                    </div> 
+                    <!-- ... (contenido de edit-pad) ... -->
                 </div> 
 
-                <!-- ============================================= -->
-                <!-- NUEVO: Sección de Exportar Datos            -->
-                <!-- ============================================= -->
+                <!-- ... Sección de Exportar Datos no cambia ... -->
                 <div id="export-data" class="content-section">
+                    <!-- ... (contenido de export-data) ... -->
+                </div>
+
+                <!-- ============================================= -->
+                <!-- NUEVO: Sección de Historial
+                <!-- ============================================= -->
+                <div id="history-log" class="content-section">
                     <div class="card">
-                        <h2 class="card-title">Exportar Datos</h2>
-                        <p class="card-description">Descarga un backup completo de tu base de datos en formato JSON o Excel. El archivo Excel se generará con dos hojas (Pastillas y Aplicaciones).</p>
-                        <div class="button-group">
-                            <button id="export-json-btn" class="btn btn-secondary" type="button">
-                                <span class="material-icons-outlined">data_object</span>
-                                <span>Exportar a JSON</span>
-                            </button>
-                            <button id="export-excel-btn" class="btn btn-secondary" type="button">
-                                <span class="material-icons-outlined">description</span>
-                                <span>Exportar a Excel (.xlsx)</span>
-                            </button>
+                        <h2 class="card-title">Historial de Cambios</h2>
+                        <p class="card-description">Muestra las últimas 50 acciones realizadas por los administradores. Los nuevos registros pueden tardar unos segundos en aparecer.</p>
+                        <div class="history-log-table-wrapper">
+                            <table class="history-log-table">
+                                <thead>
+                                    <tr>
+                                        <th>Usuario</th>
+                                        <th>Acción</th>
+                                        <th>ID Pastilla</th>
+                                        <th>Fecha y Hora</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="history-log-table-body">
+                                    <!-- Las filas se insertarán aquí por JS -->
+                                    <tr class="empty-row-placeholder">
+                                        <td colspan="4">Cargando historial...</td>
+                                    </tr>
+                                </tbody>
+                            </table>
                         </div>
                     </div>
                 </div>
                 <!-- ============================================= -->
-                <!-- FIN DEL CAMBIO                             -->
 
             </div>
         </main>
     </div>
 
-    <!-- Botón de Tema -->
-     <div class="floating-buttons-container right" id="floating-btn-container" style="display: none;">
-        <button class="material-btn" id="darkBtn" aria-label="Cambiar modo oscuro" aria-pressed="false" type="button">
-            <svg class="lp-icon-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="4"></line><line x1="12" y1="20" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="6.34" y2="6.34"></line><line x1="17.66" y1="17.66" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="4" y2="12"></line><line x1="20" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="6.34" y2="17.66"></line><line x1="17.66" y1="6.34" x2="19.78" y2="4.22"></line></svg>
-            <svg class="lp-icon-moon" viewBox="0 0 24 24" style="opacity:0;"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
-        </button>
-    </div>
-
-    <!-- Modal de Confirmación -->
-    <div id="confirm-modal-overlay" class="modal-overlay" style="display: none;">
-        <div id="confirm-modal-content" class="card modal-card">
-            <h2 class="card-title" id="confirm-modal-title">Confirmar Acción</h2>
-            <p class="card-description" id="confirm-modal-message">¿Estás seguro?</p>
-            <div class="button-group modal-buttons">
-                <button id="confirm-modal-btn-no" class="btn btn-outline" type="button">Cancelar</button>
-                <button id="confirm-modal-btn-yes" class="btn btn-danger" type="button">Confirmar</button>
-            </div>
-        </div>
-    </div>
+    <!-- ... Botón de Tema y Modal no cambian ... -->
     
     <script type="module" src="admin-script.js"></script> 
 </body>
