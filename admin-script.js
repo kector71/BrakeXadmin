@@ -10,13 +10,13 @@ const {
     deleteDoc,
     onSnapshot,
     onAuthStateChanged,
-    signInWithEmailAndPassword, // <-- Autenticación
-    signOut                     // <-- Salir
+    signInWithEmailAndPassword,
+    signOut
 } = window.firebaseTools;
 
 
 document.addEventListener('DOMContentLoaded', () => {
-    console.log("Admin script 2.1 FINAL loaded. DOM ready.");
+    console.log("Admin script 2.2 (No-AI) loaded. DOM ready.");
 
     // ----- VARIABLES GLOBALES -----
     let allPadsCache = []; 
@@ -43,25 +43,23 @@ document.addEventListener('DOMContentLoaded', () => {
             loginForm: document.getElementById('login-form'),
             loginEmail: document.getElementById('login-email'),
             loginPassword: document.getElementById('login-password'),
-            loginPasswordToggle: document.getElementById('login-password-toggle'), // <-- AÑADIDO
+            loginPasswordToggle: document.getElementById('login-password-toggle'),
             loginBtn: document.getElementById('login-btn'),
             loginMessage: document.getElementById('login-message'),
             mainAppContainer: document.getElementById('main-app-container'),
             floatingBtnContainer: document.getElementById('floating-btn-container'),
             logoutBtn: document.getElementById('logout-btn'),
             
-            // --- Elementos de Gemini ---
-            geminiAppInput: document.getElementById('gemini-app-input'),
-            geminiAppGenerateBtn: document.getElementById('gemini-app-generate-btn'),
-            geminiAppStatus: document.getElementById('gemini-app-status'),
-            geminiAppLoading: document.getElementById('gemini-app-loading'),
-
             // --- Elementos del Panel ---
             navItems: document.querySelectorAll('.nav-item'),
             contentSections: document.querySelectorAll('.content-section'),
             pageTitle: document.getElementById('page-title'),
             padCountDashboard: document.getElementById('pad-count-dashboard'),
             appsTotalDashboard: document.getElementById('apps-total-dashboard'),
+            
+            // Botones de Exportación
+            exportJsonBtn: document.getElementById('export-json-btn'),
+            exportExcelBtn: document.getElementById('export-excel-btn'),
             
             connectionStatus: document.getElementById('connection-status'),
             connectionStatusText: document.getElementById('connection-status-text'),
@@ -113,14 +111,12 @@ document.addEventListener('DOMContentLoaded', () => {
             seriesList: document.getElementById('series-list') 
         };
         
-        // Revisar elementos cruciales
-        if (!els.loginContainer || !els.mainAppContainer || !els.pageTitle || !els.searchType || !els.deletePadBtn || !els.duplicatePadBtn || !els.imagePreviewContainer || !els.marcasList || !els.darkBtn || !els.geminiAppGenerateBtn || !els.loginPasswordToggle) {
+        if (!els.loginContainer || !els.mainAppContainer || !els.pageTitle || !els.exportJsonBtn) {
              throw new Error("Elementos esenciales del layout o formulario no encontrados.");
         }
         console.log("DOM elements obtained successfully.");
     } catch (error) {
         console.error("Error obtaining DOM elements:", error);
-        console.error("Error crítico: No se encontraron elementos HTML necesarios. Revisa IDs.");
         return; 
     }
 
@@ -317,7 +313,7 @@ document.addEventListener('DOMContentLoaded', () => {
             } catch (e) { console.error("Error buscando en pastilla:", e, pad); }
 
              if (foundMatch) {
-                  acc.push({ pad, docId: pad.id, foundText: foundMatch }); 
+                 acc.push({ pad, docId: pad.id, foundText: foundMatch }); 
              }
              return acc;
         }, []); 
@@ -372,11 +368,6 @@ document.addEventListener('DOMContentLoaded', () => {
         
         if (els.imagePreviewContainer) els.imagePreviewContainer.innerHTML = ''; 
         if (els.padMedidas) els.padMedidas.classList.remove('is-valid', 'is-invalid');
-
-        // Limpiar también el formulario de Gemini
-        if (els.geminiAppInput) els.geminiAppInput.value = '';
-        if (els.geminiAppStatus) els.geminiAppStatus.textContent = '';
-        if (els.geminiAppLoading) els.geminiAppLoading.style.display = 'none';
         
         resetAppForm();
         renderCurrentApps();
@@ -541,126 +532,107 @@ document.addEventListener('DOMContentLoaded', () => {
         circle.addEventListener('animationend', () => { if (circle.parentNode) circle.remove(); }, { once: true });
     };
 
-    // =============================================
-    //  NUEVO: Funciones de Gemini API
-    // =============================================
     
-    /**
-     * Realiza una llamada fetch con reintentos y backoff exponencial.
-     */
-    async function fetchWithBackoff(url, options, retries = 3, delay = 1000) {
-        try {
-            const response = await fetch(url, options);
-            if (response.ok) {
-                return response.json();
-            }
-            // No registrar errores de reintento en la consola
-            if (retries > 0 && [429, 500, 503].includes(response.status)) {
-                await new Promise(res => setTimeout(res, delay));
-                return fetchWithBackoff(url, options, retries - 1, delay * 2);
-            }
-            throw new Error(`Error en la solicitud: ${response.statusText}`);
-        } catch (error) {
-            if (retries > 0) {
-                await new Promise(res => setTimeout(res, delay));
-                return fetchWithBackoff(url, options, retries - 1, delay * 2);
-            }
-            // Solo lanzar el error después de que todos los reintentos fallen
-            console.error("Fallaron todos los reintentos de fetch:", error);
-            throw error;
-        }
-    }
+    // --- Funciones de Exportación ---
 
     /**
-     * Llama a la API de Gemini para generar aplicaciones.
+     * Crea un enlace de descarga para un blob de datos.
      */
-    async function handleGeminiAppGenerate() {
-        const inputText = els.geminiAppInput.value.trim();
-        if (!inputText) {
-            showStatus(els.geminiAppStatus, "Por favor, pega el texto primero.", true, 3000);
+    const downloadBlob = (blob, filename) => {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    };
+
+    /**
+     * Exporta allPadsCache a un archivo JSON.
+     */
+    const exportToJSON = () => {
+        if (allPadsCache.length === 0) {
+            showStatus(els.connectionStatusText, "No hay datos para exportar.", true, 3000);
+            return;
+        }
+        try {
+            const jsonData = JSON.stringify(allPadsCache, null, 2);
+            const blob = new Blob([jsonData], { type: 'application/json' });
+            downloadBlob(blob, `brakeX_export_${new Date().toISOString().split('T')[0]}.json`);
+            showStatus(els.connectionStatusText, "Exportación JSON exitosa.", false, 3000);
+        } catch (error) {
+            console.error("Error al exportar JSON:", error);
+            showStatus(els.connectionStatusText, "Error al generar el JSON.", true, 3000);
+        }
+    };
+
+    /**
+     * Exporta allPadsCache a un archivo Excel (.xlsx) con dos hojas.
+     */
+    const exportToExcel = () => {
+        if (allPadsCache.length === 0) {
+            showStatus(els.connectionStatusText, "No hay datos para exportar.", true, 3000);
             return;
         }
 
-        els.geminiAppLoading.style.display = 'block';
-        els.geminiAppGenerateBtn.disabled = true;
-        showStatus(els.geminiAppStatus, "✨ Analizando texto con IA...", false, 20000);
-
-        // El prompt del sistema que instruye a la IA
-        const systemPrompt = `Eres un asistente experto en catalogación de autopartes. 
-Tu tarea es leer un texto desordenado y extraer una lista de aplicaciones de vehículos.
-Debes devolver SÓLO un array JSON válido.
-La estructura de cada objeto debe ser:
-{
-  "marca": "Nombre de la Marca (ej: Chevrolet)",
-  "serie": "Nombre de la Serie/Modelo (ej: Spark)",
-  "litros": "Litros o motor (ej: 1.2L o 1.6)",
-  "año": "Rango de años (ej: 2010-2015 o 2009)",
-  "especificacion": "Cualquier detalle extra (ej: 4WD o Sedan)"
-}
-Interpreta los años "10-15" como "2010-2015". Si falta un dato (como 'litros'), usa un string vacío "".`;
-
-        // El esquema JSON que la IA DEBE seguir
-        const jsonSchema = {
-            type: "ARRAY",
-            items: {
-                type: "OBJECT",
-                properties: {
-                    "marca": { "type": "STRING" },
-                    "serie": { "type": "STRING" },
-                    "litros": { "type": "STRING" },
-                    "año": { "type": "STRING" },
-                    "especificacion": { "type": "STRING" }
-                },
-                required: ["marca", "serie"]
-            }
-        };
-
-        const payload = {
-            contents: [{ parts: [{ text: inputText }] }],
-            systemInstruction: {
-                parts: [{ text: systemPrompt }]
-            },
-            generationConfig: {
-                responseMimeType: "application/json",
-                responseSchema: jsonSchema
-            }
-        };
-
-        const apiKey = ""; // API key se inyecta automáticamente
-        const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
+        // Comprobar si la librería XLSX (SheetJS) está cargada
+        if (typeof XLSX === 'undefined') {
+            console.error("La librería XLSX (SheetJS) no está cargada.");
+            showStatus(els.connectionStatusText, "Error: La librería de exportación no cargó. Refresca la página.", true, 5000);
+            return;
+        }
 
         try {
-            const result = await fetchWithBackoff(apiUrl, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
+            // 1. Preparar datos para la hoja "Pastillas"
+            const padsData = allPadsCache.map(pad => ({
+                id: pad.id,
+                ref: (pad.ref || []).join(', '),
+                oem: (pad.oem || []).join(', '),
+                fmsi: (pad.fmsi || []).join(', '),
+                posicion: pad.posición || '',
+                medidas: (pad.medidas || []).join(', '),
+                imagenes: (pad.imagenes || []).join(', '),
+                num_apps: (pad.aplicaciones || []).length
+            }));
+
+            // 2. Preparar datos para la hoja "Aplicaciones"
+            const appsData = [];
+            allPadsCache.forEach(pad => {
+                if (Array.isArray(pad.aplicaciones)) {
+                    pad.aplicaciones.forEach(app => {
+                        appsData.push({
+                            pad_id: pad.id, // ID de referencia
+                            marca: app.marca || '',
+                            serie: app.serie || '',
+                            litros: app.litros || '',
+                            año: app.año || '',
+                            especificacion: app.especificacion || ''
+                        });
+                    });
+                }
             });
 
-            const text = result.candidates?.[0]?.content?.parts?.[0]?.text;
-            if (!text) {
-                throw new Error("Respuesta de la IA vacía o mal formada.");
-            }
+            // 3. Crear las hojas de cálculo
+            const wsPads = XLSX.utils.json_to_sheet(padsData);
+            const wsApps = XLSX.utils.json_to_sheet(appsData);
 
-            const newApps = JSON.parse(text);
-            if (!Array.isArray(newApps)) {
-                 throw new Error("La IA no devolvió un array.");
-            }
+            // 4. Crear el libro de trabajo y añadir las hojas
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, wsPads, "Pastillas");
+            XLSX.utils.book_append_sheet(wb, wsApps, "Aplicaciones");
 
-            // Añadir las nuevas apps a la lista actual
-            currentApps.push(...newApps);
-            renderCurrentApps(); // Actualizar la lista en la UI
+            // 5. Escribir y descargar el archivo
+            XLSX.writeFile(wb, `brakeX_export_${new Date().toISOString().split('T')[0]}.xlsx`);
             
-            showStatus(els.geminiAppStatus, `¡Éxito! Se añadieron ${newApps.length} aplicaciones.`, false, 4000);
-            els.geminiAppInput.value = ''; // Limpiar el textarea
+            showStatus(els.connectionStatusText, "Exportación Excel exitosa.", false, 3000);
 
         } catch (error) {
-            console.error("Error llamando a Gemini API:", error);
-            showStatus(els.geminiAppStatus, "Error al procesar el texto. Intenta de nuevo.", true, 5000);
-        } finally {
-            els.geminiAppLoading.style.display = 'none';
-            els.geminiAppGenerateBtn.disabled = false;
+            console.error("Error al exportar Excel:", error);
+            showStatus(els.connectionStatusText, "Error al generar el archivo Excel.", true, 3000);
         }
-    }
+    };
 
 
     // ----- EVENT LISTENERS -----
@@ -693,19 +665,18 @@ Interpreta los años "10-15" como "2010-2015". Si falta un dato (como 'litros'),
         els.logoutBtn.addEventListener('click', async () => {
              const confirmed = await showCustomConfirm("¿Estás seguro de que quieres cerrar sesión?", "Cerrar Sesión", "Cerrar Sesión", "btn-danger");
              if (confirmed) {
-                try {
-                    await signOut(auth);
-                    allPadsCache = []; // Limpiar caché de datos
-                    currentApps = []; // Limpiar apps en memoria
-                    resetFormsAndMode(); // Limpiar formularios
-                    updateDashboardStats(); // Actualizar stats a 0
-                } catch (error) {
-                    console.error("Error al cerrar sesión:", error);
-                }
+                 try {
+                     await signOut(auth);
+                     allPadsCache = []; 
+                     currentApps = []; 
+                     resetFormsAndMode(); 
+                     updateDashboardStats(); 
+                 } catch (error) {
+                     console.error("Error al cerrar sesión:", error);
+                 }
              }
         });
 
-        // --- CORRECCIÓN: Listener para Ver/Ocultar Contraseña ---
         els.loginPasswordToggle.addEventListener('click', () => {
             const input = els.loginPassword;
             const icon = els.loginPasswordToggle.querySelector('span.material-icons-outlined');
@@ -736,6 +707,10 @@ Interpreta los años "10-15" como "2010-2015". Si falta un dato (como 'litros'),
             });
         });
 
+        // Listeners de Exportación
+        els.exportJsonBtn.addEventListener('click', exportToJSON);
+        els.exportExcelBtn.addEventListener('click', exportToExcel);
+
         // --- BÚSQUEDA ---
         els.searchBtn.addEventListener('click', performSearch);
         els.searchType.addEventListener('change', updateSearchPlaceholder); 
@@ -748,8 +723,6 @@ Interpreta los años "10-15" como "2010-2015". Si falta un dato (como 'litros'),
             if (e.key === 'Enter') { e.preventDefault(); clearTimeout(searchTimeout); performSearch(); }
         });
 
-
-        // Clic Cargar Resultados
         els.searchResults.addEventListener('click', (e) => {
             const targetButton = e.target.closest('.edit-btn');
             if (targetButton) {
@@ -760,7 +733,6 @@ Interpreta los años "10-15" como "2010-2015". Si falta un dato (como 'litros'),
             }
         });
 
-        // Limpiar Form
         els.clearSearchBtn.addEventListener('click', resetFormsAndMode);
 
         // Form App Submit
@@ -931,8 +903,8 @@ Interpreta los años "10-15" como "2010-2015". Si falta un dato (como 'litros'),
             if (els.duplicatePadBtn) els.duplicatePadBtn.style.display = 'none';
 
              if (els.savePadBtn) {
-                 els.savePadBtn.classList.remove('btn-danger', 'btn-secondary');
-                 els.savePadBtn.classList.add('btn-primary');
+                  els.savePadBtn.classList.remove('btn-danger', 'btn-secondary');
+                  els.savePadBtn.classList.add('btn-primary');
              }
             
             if (els.padRef) els.padRef.focus();
@@ -975,9 +947,6 @@ Interpreta los años "10-15" como "2010-2015". Si falta un dato (como 'litros'),
             catch (storageError) { console.warn("No se pudo guardar pref modo oscuro:", storageError); }
         });
 
-        // --- NUEVO: LISTENER PARA BOTÓN GEMINI ---
-        els.geminiAppGenerateBtn.addEventListener('click', handleGeminiAppGenerate);
-        
         console.log("Todos los event listeners configurados.");
 
     } catch (error) {
@@ -1009,7 +978,7 @@ Interpreta los años "10-15" como "2010-2015". Si falta un dato (como 'litros'),
     } catch (storageError) { console.warn("No se pudo aplicar pref modo oscuro:", storageError); }
 
     // =============================================
-    //  ACTUALIZADO: Lógica de Inicialización de Firebase
+    // Lógica de Inicialización de Firebase
     // =============================================
     const initFirebase = () => {
         try {
@@ -1031,7 +1000,6 @@ Interpreta los años "10-15" como "2010-2015". Si falta un dato (como 'litros'),
             });
         } catch (err) {
             console.error("Error inicializando Firebase Auth:", err);
-            // Mostrar error en la pantalla de login si falla
             if(els.loginMessage) showStatus(els.loginMessage, `Error: ${err.message}`, true, 10000);
         }
     };

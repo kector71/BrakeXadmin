@@ -1,7 +1,6 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <!-- ... (tu head no cambia) ... -->
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Brake X Admin</title>
@@ -10,8 +9,12 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Outlined" rel="stylesheet">
     <link rel="stylesheet" href="admin-styles.css">
+
+    <!-- Librería para exportar a Excel (XLSX) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+    <!-- Script de Firebase -->
     <script type="module">
-        // ... (tu script de firebase-config no cambia) ...
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
         import { 
             getAuth, 
@@ -20,6 +23,8 @@
             signOut
         } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
         import { getFirestore, collection, doc, setDoc, deleteDoc, onSnapshot, writeBatch } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js"; 
+        
+        // Configuración de Firebase (reemplaza con la tuya si es diferente)
         const firebaseConfig = {
           apiKey: "AIzaSyCha4S_wLxI_CZY1Tc9FOJNA3cUTggISpU",
           authDomain: "brakexadmin.firebaseapp.com",
@@ -28,9 +33,12 @@
           messagingSenderId: "799264562947",
           appId: "1:799264562947:web:52d860ae41a5c4b8f75336"
         };
+
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
         const db = getFirestore(app);
+
+        // Exponer herramientas de Firebase a la ventana global para el script principal
         window.firebaseTools = {
             auth,
             db,
@@ -45,7 +53,7 @@
             signOut
         };
     </script>
-    </head>
+</head>
 <body>
     
     <!-- Contenedor de Login -->
@@ -61,9 +69,6 @@
                     <input type="email" id="login-email" class="text-input" required>
                 </div>
                 
-                <!-- ============================================= -->
-                <!--  CAMBIO: Ver/Ocultar Contraseña             -->
-                <!-- ============================================= -->
                 <div class="form-group">
                     <label for="login-password" class="input-label">Contraseña</label>
                     <div class="input-wrapper-relative"> 
@@ -73,9 +78,6 @@
                         </button>
                     </div>
                 </div>
-                <!-- ============================================= -->
-                <!--  FIN DEL CAMBIO                             -->
-                <!-- ============================================= -->
                 
                 <p id="login-message" class="status-message"></p>
                 <button id="login-btn" class="btn btn-primary" type="submit">
@@ -92,12 +94,11 @@
         
         <main class="main-content">
             
-            <!-- ... (tu header no cambia) ... -->
             <header class="content-header">
                 <div class="header-left">
                     <div class="header-logo-group">
                         <span class="material-icons-outlined logo-icon">speed</span>
-                        <span class="logo-text">Brake X Admin 2.1</span>
+                        <span class="logo-text">Brake X Admin 2.2</span>
                     </div>
                     <nav class="nav-menu">
                         <a href="#" class="nav-item active" data-section="dashboard">
@@ -108,19 +109,27 @@
                             <span class="material-icons-outlined">edit_note</span>
                             <span>Añadir / Editar</span>
                         </a>
+                        <!-- ============================================= -->
+                        <!-- NUEVO: Enlace de Exportar en el Menú         -->
+                        <!-- ============================================= -->
+                        <a href="#" class="nav-item" data-section="export-data">
+                            <span class="material-icons-outlined">download</span>
+                            <span>Exportar Datos</span>
+                        </a>
+                        <!-- ============================================= -->
+                        <!-- FIN DEL CAMBIO                             -->
                     </nav>
                 </div>
                 <div class="header-right">
                      <button id="logout-btn" class="btn btn-outline" type="button">
-                        <span class="material-icons-outlined">logout</span>
-                        <span>Cerrar Sesión</span>
+                         <span class="material-icons-outlined">logout</span>
+                         <span>Cerrar Sesión</span>
                     </button>
                 </div>
             </header>
             
             <div class="content-wrapper">
                 
-                <!-- ... (tu dashboard no cambia) ... -->
                 <h1 id="page-title">Dashboard</h1>
                 <div id="dashboard" class="content-section active">
                     <div class="card-grid cols-2">
@@ -133,12 +142,18 @@
                         </div>
                         <div class="stat-card accent-green">
                             <span class="material-icons-outlined stat-icon">app_registration</span>
-                               <div class="stat-info">
+                                <div class="stat-info">
                                 <span class="stat-value" id="apps-total-dashboard">0</span>
                                 <span class="stat-label">Aplicaciones Totales</span>
                             </div>
                         </div>
                     </div>
+
+                    <!-- ============================================= -->
+                    <!-- ELIMINADO: Tarjeta de Exportación de aquí     -->
+                    <!-- ============================================= -->
+                    <!-- La tarjeta <div class="card"> con "Exportar Datos" se eliminó de esta sección -->
+
                     <div class="card">
                         <h2 class="card-title">Estado de la Base de Datos</h2>
                         <p class="card-description">Los datos se cargan en tiempo real desde Firebase Firestore. Cualquier cambio se guardará automáticamente en la nube.</p>
@@ -153,7 +168,6 @@
                     
                     <div class="edit-layout-grid">
                         
-                        <!-- ... (tu layout-col-main no cambia) ... -->
                         <div class="layout-col-main">
                             <div class="card">
                                  <h2 class="card-title">Buscar Pastilla para Editar</h2>
@@ -176,7 +190,7 @@
                             <div class="card">
                                 <h2 class="card-title" id="form-mode-title">Añadir Nueva Pastilla</h2>
                                 <form id="pad-form-main" class="form-grid" onsubmit="return false;">
-                                   <input type="hidden" id="edit-index" value="-1">
+                                    <input type="hidden" id="edit-index" value="-1">
                                     <div class="form-group span-2"> <label for="pad-ref" class="input-label">Referencias (separadas por coma)</label> <input type="text" id="pad-ref" class="text-input" required> </div>
                                     <div class="form-group"> <label for="pad-oem" class="input-label">OEM (separados por coma)</label> <input type="text" id="pad-oem" class="text-input"> </div>
                                     <div class="form-group"> <label for="pad-fmsi" class="input-label">FMSI (separadas por coma)</label> <input type="text" id="pad-fmsi" class="text-input"> </div>
@@ -217,26 +231,13 @@
                         
                         <!-- Columna Lateral (Sidebar) -->
                         <div class="layout-col-sidebar">
-                            <div class="card gemini-card">
-                                <h2 class="card-title">Generador de Aplicaciones (IA) ✨</h2>
-                                <p class="card-description">Pega una lista de vehículos (ej: Spark 1.2 10-15, Aveo 1.6 09-12) y la IA los convertirá al formato correcto.</p>
-                                <div class="form-group">
-                                    <label for="gemini-app-input" class="input-label">Texto a convertir:</label>
-                                    <textarea id="gemini-app-input" class="text-input" rows="5" placeholder="Compatible con:&#10;Chevrolet Spark 1.2 (2010-2015)&#10;Nissan March 1.6 (2012-2019) 4WD&#10;Aveo 1.6L 2009..."></textarea>
-                                </div>
-                                <div id="gemini-app-status" class="status-message" style="margin-top: 0; margin-bottom: 0.75rem;"></div>
-                                <button id="gemini-app-generate-btn" class="btn btn-tertiary" type="button" style="width: 100%;">
-                                    <span class="material-icons-outlined">auto_awesome</span>
-                                    <span>Generar Apps</span>
-                                </button>
-                                <div id="gemini-app-loading" class="gemini-loader" style="display: none;"></div>
-                            </div>
+                            
+                            <!-- Tarjeta de Gemini Eliminada -->
 
                             <div class="card card-sticky"> 
                                 <h2 class="card-title">Aplicaciones (Vehículos)</h2>
                                  <p class="card-description" id="app-form-description">Añade vehículos compatibles.</p>
                                 <form id="app-form" class="form-grid cols-2" onsubmit="return false;">
-                                    <!-- ... (tu app-form no cambia) ... -->
                                     <input type="hidden" id="editing-app-index" value="-1">
                                     <div class="form-group"> 
                                         <label for="app-marca" class="input-label">Marca</label> 
@@ -267,6 +268,28 @@
                     </div> 
                 </div> 
 
+                <!-- ============================================= -->
+                <!-- NUEVO: Sección de Exportar Datos            -->
+                <!-- ============================================= -->
+                <div id="export-data" class="content-section">
+                    <div class="card">
+                        <h2 class="card-title">Exportar Datos</h2>
+                        <p class="card-description">Descarga un backup completo de tu base de datos en formato JSON o Excel. El archivo Excel se generará con dos hojas (Pastillas y Aplicaciones).</p>
+                        <div class="button-group">
+                            <button id="export-json-btn" class="btn btn-secondary" type="button">
+                                <span class="material-icons-outlined">data_object</span>
+                                <span>Exportar a JSON</span>
+                            </button>
+                            <button id="export-excel-btn" class="btn btn-secondary" type="button">
+                                <span class="material-icons-outlined">description</span>
+                                <span>Exportar a Excel (.xlsx)</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                <!-- ============================================= -->
+                <!-- FIN DEL CAMBIO                             -->
+
             </div>
         </main>
     </div>
@@ -294,4 +317,3 @@
     <script type="module" src="admin-script.js"></script> 
 </body>
 </html>
-

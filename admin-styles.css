@@ -646,24 +646,14 @@ span.ripple {
     bottom: calc(var(--base-gap) * 2); 
     z-index: 900;
 }
-/* ============================================= */
-/* CORRECCIÓN: Posición Botón Modo Oscuro       */
-/* ============================================= */
 .floating-buttons-container.right { 
     right: calc(var(--base-gap) * 2); 
-    /* 'bottom: auto' y 'top: 1.25rem' eliminados */
-    /* Ahora usará el 'bottom' de la clase base */
 }
 @media (max-width: 1024px) {
-    /* Esta regla asegura que se mantenga abajo en tablets */
     .floating-buttons-container.right {
         bottom: calc(var(--base-gap) * 2); 
     }
 }
-/* ============================================= */
-/* FIN DE LA CORRECCIÓN                          */
-/* ============================================= */
-
 
 .material-btn {
     width: 44px; 
@@ -688,7 +678,6 @@ span.ripple {
     box-shadow: var(--shadow-md); 
 }
 
-
 /* --- Estilos de Iconos Corregidos --- */
 .material-btn svg {
     width: 24px; 
@@ -706,8 +695,6 @@ span.ripple {
     fill: currentColor; 
     stroke: none;
 }
-/* --- Fin Corrección de Iconos --- */
-
 
 /* --- ESTILOS: Layout Compacto --- */
 .edit-layout-grid {
@@ -746,7 +733,6 @@ span.ripple {
 .secondary-actions-group .btn {
     width: 100%;
 }
-
 
 /* --- Previsualización de Imágenes --- */
 .image-preview-container {
@@ -859,10 +845,7 @@ span.ripple {
 }
 
 
-/* ============================================= */
-/* NUEVO: Estilos de Inicio de Sesión           */
-/* ============================================= */
-
+/* --- Estilos de Inicio de Sesión --- */
 .login-container {
     display: flex;
     align-items: center;
@@ -889,32 +872,7 @@ span.ripple {
     }
 }
 
-
-/* ============================================= */
-/* NUEVO: Estilos de Gemini API                  */
-/* ============================================= */
-
-.gemini-card textarea {
-    min-height: 120px;
-    resize: vertical;
-    font-size: 0.85rem;
-}
-
-.gemini-loader {
-    width: 24px;
-    height: 24px;
-    border: 3px solid var(--btn-tertiary-bg);
-    border-bottom-color: var(--btn-tertiary-text);
-    border-radius: 50%;
-    display: inline-block;
-    animation: spin 1s linear infinite;
-    margin: 0.5rem auto 0;
-}
-
-
-/* ============================================= */
-/* NUEVO: Estilos para Ver/Ocultar Contraseña   */
-/* ============================================= */
+/* --- Estilos para Ver/Ocultar Contraseña --- */
 .input-wrapper-relative {
     position: relative;
 }
