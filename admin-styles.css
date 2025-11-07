@@ -322,9 +322,7 @@ body {
     color: var(--text-color-secondary);
 }
 
-/* ============================================= */
-/* CORRECCIÓN: Tamaño de Fuente Input para evitar Zoom en iOS
-/* ============================================= */
+/* CORRECCIÓN: Tamaño de Fuente Input para evitar Zoom en iOS */
 .text-input, .select-input {
     width: 100%;
     padding: var(--base-padding) var(--base-gap); 
@@ -336,7 +334,6 @@ body {
     font-size: 16px; /* Forzar 16px para evitar zoom en iOS */
     transition: border-color 0.2s, box-shadow 0.2s, background-color 0.2s;
 }
-/* ============================================= */
 
 .text-input:focus, .select-input:focus {
     outline: none;
@@ -531,6 +528,9 @@ body {
     list-style: none; 
     border: 1px solid var(--border-color); 
     border-radius: var(--base-radius); 
+    /* NUEVO: Scroll para lista de apps */
+    max-height: 400px;
+    overflow-y: auto;
 }
 .app-list li {
     display: flex;
@@ -548,6 +548,14 @@ body {
 .app-info { 
     display: flex; 
     flex-direction: column; 
+    /* NUEVO: Evitar que el texto se desborde */
+    overflow: hidden;
+    margin-right: var(--base-gap);
+}
+.app-info strong {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 .app-details { 
     font-size: calc(var(--base-font-size) * 0.8); 
@@ -921,7 +929,6 @@ span.ripple {
 }
 
 /* Hacer espacio para el botón dentro del input */
-/* Nota: Este estilo ahora está cubierto por el estilo principal de .text-input para el tamaño de fuente, pero se mantiene la corrección de padding. */
 .input-wrapper-relative .text-input {
     padding-right: 40px; 
 }
@@ -984,28 +991,32 @@ span.ripple {
     text-transform: uppercase;
 }
 
-.log-action-crear {
+.log-action-Crear,
+.log-action-Crear-Movido {
     color: #2b6cb0; /* Texto azul */
     background-color: #ebf4ff; /* Fondo azul claro */
 }
-.log-action-actualizar {
+.log-action-Actualizar {
     color: #c05621; /* Texto naranja */
     background-color: #fffaf0; /* Fondo naranja claro */
 }
-.log-action-eliminar {
+.log-action-Eliminar,
+.log-action-Eliminar-Movido {
     color: #9b2c2c; /* Texto rojo */
     background-color: #fff5f5; /* Fondo rojo claro */
 }
 
-.lp-dark .log-action-crear {
+.lp-dark .log-action-Crear,
+.lp-dark .log-action-Crear-Movido {
     color: #90cdf4;
     background-color: #2c5282;
 }
-.lp-dark .log-action-actualizar {
+.lp-dark .log-action-Actualizar {
     color: #f6ad55;
     background-color: #702e0c;
 }
-.lp-dark .log-action-eliminar {
+.lp-dark .log-action-Eliminar,
+.lp-dark .log-action-Eliminar-Movido {
     color: #feb2b2;
     background-color: #822727;
 }
