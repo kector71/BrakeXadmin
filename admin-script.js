@@ -106,14 +106,14 @@ document.addEventListener('DOMContentLoaded', () => {
             seriesList: getEl('series-list'),
             historyLogTableBody: getEl('history-log-table-body'),
             filterAppsInput: getEl('filter-apps-input'),
-            // --- VIN MODAL ---
+            // --- ELEMENTOS DEL MODAL DE VIN ---
             vinModalOverlay: getEl('vin-modal-overlay'),
             vinInput: getEl('vin-input'),
             vinForm: getEl('vin-form'),
             vinFeedback: getEl('vin-feedback'),
             vinSubmitBtn: getEl('vin-submit-btn'),
             vinCancelBtn: getEl('vin-cancel-btn'),
-            // --- VIN BUTTON ---
+            // --- BOTÓN DE VIN ---
             vinLookupBtn: getEl('vin-lookup-btn')
         };
 
@@ -202,7 +202,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     };
 
-    // --- BÚSQUEDA POR VIN ---
+    // --- BÚSQUEDA POR VIN (USANDO DecodeVinValuesExtended) ---
     const lookupVIN = async () => {
         const vin = await showVinModal();
         if (!vin) return;
@@ -210,6 +210,7 @@ document.addEventListener('DOMContentLoaded', () => {
         showStatus(els.savePadStatus, "Buscando datos del VIN...", false, 10000);
 
         try {
+            // ✅ Endpoint CORRECTO y funcional
             const url = `https://vpic.nhtsa.dot.gov/api/vehicles/DecodeVinValuesExtended/${encodeURIComponent(vin)}?format=json`;
             const res = await fetch(url);
 
@@ -255,7 +256,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
-    // --- MODAL DE CONFIRMACIÓN ---
+    // --- MODAL DE CONFIRMACIÓN (EXISTENTE) ---
     let confirmResolve = null;
     const showCustomConfirm = (message, title = "Confirmar Acción", confirmText = "Confirmar", confirmClass = "btn-danger") => {
         if (!els.confirmModalOverlay) return Promise.resolve(false);
@@ -277,7 +278,8 @@ document.addEventListener('DOMContentLoaded', () => {
         }, 200); 
     };
 
-    // --- NAVEGACIÓN ---
+    // --- RESTO DE FUNCIONES (IGUAL QUE TU ARCHIVO ORIGINAL) ---
+    // --- Navegación ---
     const setActiveSection = (sectionId) => {
         if (!sectionId || !els.contentSections || !els.navItems) return;
         els.contentSections.forEach(section => section.classList.remove('active'));
@@ -298,7 +300,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
-    // --- PREVISUALIZACIÓN DE IMÁGENES ---
+    // --- Previsualización de Imágenes ---
     const renderImagePreview = () => {
         if (!els.imagePreviewContainer || !els.padImagenes) return;
         const urls = els.padImagenes.value.split(',').map(u => u.trim()).filter(Boolean);
@@ -320,7 +322,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     };
 
-    // --- VALIDACIÓN ---
+    // --- Validación ---
     const validateField = (el, regex) => {
         if (!el) return false;
         const v = el.value.trim();
@@ -339,7 +341,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
-    // --- AUTOCOMPLETADO ---
+    // --- Autocompletado ---
     const generateAutocompleteData = (pads) => {
         autocompleteData = {};
         if (!Array.isArray(pads)) return;
@@ -371,7 +373,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
-    // --- BÚSQUEDA ---
+    // --- Búsqueda ---
     const updateSearchPlaceholder = () => {
         if (!els.searchType || !els.searchRef) return;
         const t = els.searchType.value;
@@ -426,7 +428,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
-    // --- RESETS ---
+    // --- Resets ---
     const resetAppForm = () => {
         if (els.appForm) els.appForm.reset();
         editingAppIndex = -1;
@@ -460,7 +462,7 @@ document.addEventListener('DOMContentLoaded', () => {
         renderCurrentApps();
     };
 
-    // --- ESTADÍSTICAS ---
+    // --- Estadísticas ---
     const calculateTotalApps = () => {
         return allPadsCache.reduce((t, p) => t + ((p.aplicaciones || []).length), 0);
     };
@@ -470,7 +472,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (els.appsTotalDashboard) els.appsTotalDashboard.textContent = totalAppsInList;
     };
 
-    // --- MENSAJES ---
+    // --- Mensajes ---
     const showStatus = (el, msg, isError = false, dur = 4000) => {
         if (!el) return;
         el.textContent = msg;
@@ -486,7 +488,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }, dur);
     };
 
-    // --- RENDER APPS CON FILTRO ---
+    // --- Render apps con filtro ---
     const renderCurrentApps = (filter = "") => {
         if (!els.currentAppsList) return;
         const f = filter.toLowerCase();
@@ -525,7 +527,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }).join('');
     };
 
-    // --- CARGAR DATOS ---
+    // --- Cargar datos ---
     const loadAppDataIntoForm = (idx) => {
         if (!Array.isArray(currentApps) || idx < 0 || idx >= currentApps.length) return;
         const app = currentApps[idx];
@@ -581,7 +583,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (els.padRef) els.padRef.focus();
     };
 
-    // --- EFECTO RIPPLE ---
+    // --- Efecto Ripple ---
     const createRippleEffect = (e) => {
         const btn = e.currentTarget;
         if (!btn || typeof btn.getBoundingClientRect !== 'function') return;
@@ -601,7 +603,7 @@ document.addEventListener('DOMContentLoaded', () => {
         circle.addEventListener('animationend', () => circle.remove(), { once: true });
     };
 
-    // --- EXPORTACIÓN ---
+    // --- Exportación ---
     const downloadBlob = (blob, filename) => {
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
@@ -674,7 +676,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
-    // --- HISTORIAL ---
+    // --- Historial ---
     const logHistory = async (accion, padId) => {
         try {
             const user = auth.currentUser;
@@ -716,7 +718,7 @@ document.addEventListener('DOMContentLoaded', () => {
         els.historyLogTableBody.innerHTML = html;
     };
 
-    // --- ESTANDARIZACIÓN ---
+    // --- Estandarización ---
     const standardizeText = (text, type = 'none') => {
         if (typeof text !== 'string' || !text) return '';
         switch (type) {
@@ -729,7 +731,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
-    // --- SESIÓN ---
+    // --- Sesión ---
     const forceLogout = async (msg) => {
         try {
             await signOut(auth);
@@ -1048,7 +1050,7 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         }
 
-        // --- BOTÓN VIN ---
+        // --- ✅ LISTENER DEL BOTÓN VIN ---
         if (els.vinLookupBtn) els.vinLookupBtn.addEventListener('click', lookupVIN);
 
         console.log("Event listeners configurados.");
