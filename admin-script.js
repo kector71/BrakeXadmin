@@ -21,7 +21,7 @@ const {
 } = window.firebaseTools;
 
 document.addEventListener('DOMContentLoaded', () => {
-    console.log("Admin script 2.6 (Filter & Standardize) loaded. DOM ready.");
+    console.log("Admin script 2.6 + VIN API loaded. DOM ready.");
     
     // ----- VARIABLES GLOBALES -----
     let allPadsCache = []; 
@@ -42,6 +42,7 @@ document.addEventListener('DOMContentLoaded', () => {
     try {
         const getEl = id => document.getElementById(id);
         els = {
+            // Login / App
             loginContainer: getEl('login-container'),
             loginForm: getEl('login-form'),
             loginEmail: getEl('login-email'),
@@ -52,6 +53,7 @@ document.addEventListener('DOMContentLoaded', () => {
             mainAppContainer: getEl('main-app-container'),
             floatingBtnContainer: getEl('floating-btn-container'),
             logoutBtn: getEl('logout-btn'),
+            // Panel
             navItems: document.querySelectorAll('.nav-item'),
             contentSections: document.querySelectorAll('.content-section'),
             pageTitle: getEl('page-title'),
@@ -105,7 +107,9 @@ document.addEventListener('DOMContentLoaded', () => {
             marcasList: getEl('marcas-list'), 
             seriesList: getEl('series-list'),
             historyLogTableBody: getEl('history-log-table-body'),
-            filterAppsInput: getEl('filter-apps-input')
+            filterAppsInput: getEl('filter-apps-input'),
+            // --- NUEVO: VIN ---
+            vinLookupBtn: getEl('vin-lookup-btn')
         };
 
         if (!els.loginContainer || !els.mainAppContainer || !els.pageTitle || !els.darkBtn) {
@@ -621,6 +625,63 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
+    // --- BÚSQUEDA POR VIN (NUEVO Y FUNCIONAL) ---
+    const lookupVIN = async () => {
+        const vin = prompt("Ingresa el VIN del vehículo (17 caracteres):");
+        if (!vin || vin.length !== 17) {
+            if (vin !== null) showStatus(els.savePadStatus, "El VIN debe tener exactamente 17 caracteres.", true, 4000);
+            return;
+        }
+
+        showStatus(els.savePadStatus, "Buscando datos del VIN...", false, 10000);
+
+        try {
+            // ✅ Endpoint CORRECTO y funcional
+            const url = `https://vpic.nhtsa.dot.gov/api/vehicles/DecodeVinValuesExtended/${encodeURIComponent(vin)}?format=json`;
+            const res = await fetch(url);
+
+            if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+
+            const data = await res.json();
+
+            if (!data.Results || data.Results.length === 0) {
+                showStatus(els.savePadStatus, "VIN no encontrado o inválido.", true, 5000);
+                return;
+            }
+
+            const r = data.Results[0];
+            const marca = standardizeText(r.Make || '', 'title');
+            const serie = standardizeText(r.Model || '', 'title');
+            const año = (r.ModelYear || '').trim();
+            const cilindros = (r.EngineCylinders || '').trim();
+            const desplazamiento = (r.DisplacementL || '').trim();
+            let litros = '';
+
+            if (desplazamiento && desplazamiento !== '0') {
+                litros = `${desplazamiento}L`;
+            } else if (cilindros && cilindros !== '0') {
+                litros = `${cilindros} Cil.`;
+            }
+
+            if (els.appMarca) els.appMarca.value = marca;
+            if (els.appSerie) els.appSerie.value = serie;
+            if (els.appAnio) {
+                els.appAnio.value = año;
+                validateField(els.appAnio, anioRegex);
+            }
+            if (els.appLitros) els.appLitros.value = litros;
+
+            if (marca) updateSerieDatalist(marca);
+
+            showStatus(els.savePadStatus, `VIN cargado: ${marca} ${serie} (${año})`, false, 5000);
+            if (els.appSerie) els.appSerie.focus();
+
+        } catch (err) {
+            console.error("Error al consultar VIN:", err);
+            showStatus(els.savePadStatus, `Error: ${err.message || 'No se pudo conectar a la API.'}`, true, 6000);
+        }
+    };
+
     // --- EVENT LISTENERS ---
     try {
         // Login
@@ -909,6 +970,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 catch (e) { console.warn("No se pudo guardar modo oscuro", e); }
             });
         }
+
+        // --- NUEVO: Listener VIN ---
+        if (els.vinLookupBtn) els.vinLookupBtn.addEventListener('click', lookupVIN);
 
         console.log("Event listeners configurados.");
     } catch (err) {
