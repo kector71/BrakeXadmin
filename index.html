@@ -21,17 +21,15 @@
             onAuthStateChanged,
             signInWithEmailAndPassword,
             signOut,
-            setPersistence, // Nuevo para persistencia de sesión
-            browserSessionPersistence // Nuevo para persistencia de sesión
+            setPersistence,
+            browserSessionPersistence
         } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
         
-        // Imports de Firestore
         import { 
             getFirestore, collection, doc, setDoc, deleteDoc, onSnapshot, writeBatch, 
             serverTimestamp, addDoc, query, orderBy, limit 
         } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js"; 
         
-        // Configuración de Firebase
         const firebaseConfig = {
           apiKey: "AIzaSyCha4S_wLxI_CZY1Tc9FOJNA3cUTggISpU",
           authDomain: "brakexadmin.firebaseapp.com",
@@ -45,7 +43,6 @@
         const auth = getAuth(app);
         const db = getFirestore(app);
 
-        // Exponer herramientas de Firebase a la ventana global
         window.firebaseTools = {
             auth,
             db,
@@ -63,7 +60,6 @@
             query,
             orderBy,
             limit,
-            // Nuevos para control de sesión
             setPersistence,
             browserSessionPersistence 
         };
@@ -83,7 +79,6 @@
                     <label for="login-email" class="input-label">Email</label>
                     <input type="email" id="login-email" class="text-input" required>
                 </div>
-                
                 <div class="form-group">
                     <label for="login-password" class="input-label">Contraseña</label>
                     <div class="input-wrapper-relative"> 
@@ -93,7 +88,6 @@
                         </button>
                     </div>
                 </div>
-                
                 <p id="login-message" class="status-message"></p>
                 <button id="login-btn" class="btn btn-primary" type="submit">
                     <span class="material-icons-outlined">login</span>
@@ -103,12 +97,9 @@
         </div>
     </div>
 
-
     <!-- Panel principal -->
     <div class="app-container" id="main-app-container" style="display: none;">
-        
         <main class="main-content">
-            
             <header class="content-header">
                 <div class="header-left">
                     <div class="header-logo-group">
@@ -143,7 +134,6 @@
             </header>
             
             <div class="content-wrapper">
-                
                 <h1 id="page-title">Dashboard</h1>
                 
                 <div id="dashboard" class="content-section active">
@@ -157,7 +147,7 @@
                         </div>
                         <div class="stat-card accent-green">
                             <span class="material-icons-outlined stat-icon">app_registration</span>
-                                <div class="stat-info">
+                            <div class="stat-info">
                                 <span class="stat-value" id="apps-total-dashboard">0</span>
                                 <span class="stat-label">Aplicaciones Totales</span>
                             </div>
@@ -175,9 +165,7 @@
                 </div>
 
                 <div id="edit-pad" class="content-section">
-                    
                     <div class="edit-layout-grid">
-                        
                         <div class="layout-col-main">
                             <div class="card">
                                  <h2 class="card-title">Buscar Pastilla para Editar</h2>
@@ -241,7 +229,6 @@
                         
                         <!-- Columna Lateral (Sidebar) -->
                         <div class="layout-col-sidebar">
-                            
                             <div class="card card-sticky"> 
                                 <h2 class="card-title">Aplicaciones (Vehículos)</h2>
                                  <p class="card-description" id="app-form-description">Añade vehículos compatibles.</p>
@@ -249,7 +236,12 @@
                                     <input type="hidden" id="editing-app-index" value="-1">
                                     <div class="form-group"> 
                                         <label for="app-marca" class="input-label">Marca</label> 
-                                        <input type="text" id="app-marca" class="text-input" required list="marcas-list"> 
+                                        <input type="text" id="app-marca" class="text-input" required list="marcas-list">
+                                        <!-- ✅ BOTÓN DE VIN AÑADIDO AQUÍ -->
+                                        <button type="button" id="vin-lookup-btn" class="btn btn-outline" style="margin-top: 0.5rem; padding: 0.4rem 0.8rem; font-size: 0.85rem;">
+                                            <span class="material-icons-outlined" style="font-size: 1rem;">directions_car</span>
+                                            Buscar por VIN
+                                        </button>
                                     </div>
                                     <div class="form-group"> 
                                         <label for="app-serie" class="input-label">Serie / Modelo</label> 
@@ -269,20 +261,15 @@
                                 <datalist id="marcas-list"></datalist>
                                 <datalist id="series-list"></datalist>
 
-                                <!-- ============================================= -->
-                                <!-- NUEVO: Filtro de Aplicaciones
-                                <!-- ============================================= -->
                                 <div class="form-group" style="margin-top: 1rem; margin-bottom: 0.5rem;">
                                     <label for="filter-apps-input" class="input-label">Filtrar aplicaciones actuales:</label>
                                     <input type="text" id="filter-apps-input" class="text-input" placeholder="Ej: Spark o 2010">
                                 </div>
-                                <!-- ============================================= -->
 
                                 <h3 class="list-title">Aplicaciones Actuales / Añadidas:</h3>
                                 <ul id="current-apps-list" class="app-list"> <li class="empty-list">Ninguna todavía</li> </ul>
                             </div>
                         </div>
-
                     </div> 
                 </div> 
 
@@ -320,7 +307,6 @@
                                     </tr>
                                 </thead>
                                 <tbody id="history-log-table-body">
-                                    <!-- Las filas se insertarán aquí por JS -->
                                     <tr class="empty-row-placeholder">
                                         <td colspan="4">Cargando historial...</td>
                                     </tr>
@@ -329,13 +315,12 @@
                         </div>
                     </div>
                 </div>
-
             </div>
         </main>
     </div>
 
     <!-- Botón de Tema -->
-     <div class="floating-buttons-container right" id="floating-btn-container" style="display: none;">
+    <div class="floating-buttons-container right" id="floating-btn-container" style="display: none;">
         <button class="material-btn" id="darkBtn" aria-label="Cambiar modo oscuro" aria-pressed="false" type="button">
             <svg class="lp-icon-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="4"></line><line x1="12" y1="20" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="6.34" y2="6.34"></line><line x1="17.66" y1="17.66" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="4" y2="12"></line><line x1="20" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="6.34" y2="17.66"></line><line x1="17.66" y1="6.34" x2="19.78" y2="4.22"></line></svg>
             <svg class="lp-icon-moon" viewBox="0 0 24 24" style="opacity:0;"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
