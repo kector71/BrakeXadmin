@@ -109,15 +109,7 @@ document.addEventListener('DOMContentLoaded', () => {
             // --- Elementos del Historial ---
             historyLogTableBody: getEl('history-log-table-body'),
             // --- NUEVO: Filtro de Aplicaciones ---
-            filterAppsInput: getEl('filter-apps-input'),
-            // --- ✅ Elementos del VIN (nuevos) ---
-            vinLookupBtn: getEl('vin-lookup-btn'),
-            vinModalOverlay: getEl('vin-modal-overlay'),
-            vinInput: getEl('vin-input'),
-            vinForm: getEl('vin-form'),
-            vinFeedback: getEl('vin-feedback'),
-            vinSubmitBtn: getEl('vin-submit-btn'),
-            vinCancelBtn: getEl('vin-cancel-btn')
+            filterAppsInput: getEl('filter-apps-input')
         };
         // Verificación ESENCIAL (Menos estricta)
         // Solo revisa los contenedores principales y el botón de dark mode
@@ -131,113 +123,7 @@ document.addEventListener('DOMContentLoaded', () => {
         console.error("Error crítico: No se encontraron elementos HTML necesarios. Revisa IDs.");
         return; // Detener la ejecución si los contenedores base no existen
     }
-
-    // --- ✅ FUNCIÓN DE BÚSQUEDA POR VIN ---
-    const lookupVIN = async () => {
-        const { vinModalOverlay, vinInput, vinForm, vinFeedback, vinSubmitBtn, vinCancelBtn } = els;
-        if (!vinModalOverlay || !vinInput || !vinForm || !vinFeedback || !vinSubmitBtn || !vinCancelBtn) {
-            showStatus(els.savePadStatus, "Error: Modal de VIN no encontrado.", true, 5000);
-            return;
-        }
-
-        vinInput.value = '';
-        vinFeedback.textContent = '';
-        vinFeedback.className = 'status-message';
-        vinInput.classList.remove('is-valid', 'is-invalid');
-        vinSubmitBtn.disabled = true;
-        vinModalOverlay.style.display = 'flex';
-        setTimeout(() => vinModalOverlay.classList.add('visible'), 10);
-        vinInput.focus();
-
-        let vinValue = null;
-        const close = (value = null) => {
-            vinModalOverlay.classList.remove('visible');
-            setTimeout(() => {
-                vinModalOverlay.style.display = 'none';
-                vinValue = value;
-            }, 200);
-        };
-
-        const validate = () => {
-            const v = vinInput.value.trim();
-            if (v.length === 17) {
-                vinInput.classList.add('is-valid');
-                vinInput.classList.remove('is-invalid');
-                vinSubmitBtn.disabled = false;
-                return true;
-            } else {
-                vinInput.classList.add('is-invalid');
-                vinInput.classList.remove('is-valid');
-                vinSubmitBtn.disabled = true;
-                return false;
-            }
-        };
-
-        const handleInput = () => validate();
-        const handleKeyPress = (e) => {
-            if (e.key === 'Enter' && validate()) {
-                e.preventDefault();
-                vinForm.dispatchEvent(new Event('submit'));
-            }
-        };
-        const handleSubmit = (e) => {
-            e.preventDefault();
-            if (validate()) close(vinInput.value.trim());
-        };
-        const handleCancel = () => close();
-        const handleOverlayClick = (e) => {
-            if (e.target === vinModalOverlay) close();
-        };
-
-        vinInput.addEventListener('input', handleInput);
-        vinInput.addEventListener('keypress', handleKeyPress);
-        vinForm.addEventListener('submit', handleSubmit);
-        vinCancelBtn.addEventListener('click', handleCancel);
-        vinModalOverlay.addEventListener('click', handleOverlayClick);
-
-        // Esperar cierre
-        while (vinValue === null) {
-            await new Promise(r => setTimeout(r, 100));
-        }
-        if (!vinValue) return;
-
-        showStatus(els.savePadStatus, "Buscando datos del VIN...", false, 10000);
-
-        try {
-            const url = `https://vpic.nhtsa.dot.gov/api/vehicles/DecodeVinValuesExtended/${encodeURIComponent(vinValue)}?format=json`;
-            const res = await fetch(url);
-            if (!res.ok) throw new Error(`HTTP ${res.status}`);
-            const data = await res.json();
-            if (!data.Results?.[0]) throw new Error("VIN no encontrado o inválido");
-
-            const r = data.Results[0];
-            const marca = standardizeText(r.Make || '', 'title');
-            const serie = standardizeText(r.Model || '', 'title');
-            const año = r.ModelYear || '';
-            const motor = (r.DisplacementL && r.DisplacementL !== '0')
-                ? `${r.DisplacementL}L`
-                : (r.EngineCylinders && r.EngineCylinders !== '0')
-                    ? `${r.EngineCylinders} Cil.`
-                    : '';
-
-            if (els.appMarca) els.appMarca.value = marca;
-            if (els.appSerie) els.appSerie.value = serie;
-            if (els.appAnio) {
-                els.appAnio.value = año;
-                validateField(els.appAnio, anioRegex);
-            }
-            if (els.appLitros) els.appLitros.value = motor;
-            if (marca) updateSerieDatalist(marca);
-
-            showStatus(els.savePadStatus, `VIN cargado: ${marca} ${serie} (${año})`, false, 5000);
-            if (els.appSerie) els.appSerie.focus();
-
-        } catch (err) {
-            console.error("Error en búsqueda VIN:", err);
-            showStatus(els.savePadStatus, `Error: ${err.message || 'No se pudo conectar.'}`, true, 6000);
-        }
-    };
-
+    // ----- FUNCIONES -----
     // --- Modal de Confirmación ---
     let confirmResolve = null;
     const showCustomConfirm = (message, title = "Confirmar Acción", confirmText = "Confirmar", confirmClass = "btn-danger") => {
@@ -1077,12 +963,6 @@ document.addEventListener('DOMContentLoaded', () => {
                  catch (storageError) { console.warn("No se pudo guardar pref modo oscuro:", storageError); }
             });
         }
-
-        // --- ✅ LISTENER DEL BOTÓN VIN ---
-        if (els.vinLookupBtn) {
-            els.vinLookupBtn.addEventListener('click', lookupVIN);
-        }
-
         console.log("Todos los event listeners configurados.");
     } catch (error) {
         console.error("Error crítico añadiendo listeners:", error);

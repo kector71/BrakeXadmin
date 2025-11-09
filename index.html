@@ -189,8 +189,8 @@
                                 <form id="pad-form-main" class="form-grid" onsubmit="return false;">
                                     <input type="hidden" id="edit-index" value="-1">
                                     <div class="form-group span-2"> <label for="pad-ref" class="input-label">Referencias (separadas por coma)</label> <input type="text" id="pad-ref" class="text-input" required> </div>
-                                    <div class="form-group"> <label for="pad-oem" class="input-label">OEM (separados por coma)</label> <input type="text" id="pad-oem" class="text-input"> </div>
-                                    <div class="form-group"> <label for="pad-fmsi" class="input-label">FMSI (separadas por coma)</label> <input type="text" id="pad-fmsi" class="text-input"> </div>
+                                    <div class="form-group"> <label for="pad-oem" class="input-label">OEM (separados por comma)</label> <input type="text" id="pad-oem" class="text-input"> </div>
+                                    <div class="form-group"> <label for="pad-fmsi" class="input-label">FMSI (separadas por comma)</label> <input type="text" id="pad-fmsi" class="text-input"> </div>
                                     <div class="form-group"> <label for="pad-posicion" class="input-label">Posición</label> <select id="pad-posicion" class="select-input"> <option value="Delantera">Delantera</option> <option value="Trasera">Trasera</option> </select> </div>
                                     <div class="form-group"> 
                                         <label for="pad-medidas" class="input-label">Medidas (separadas por coma)</label> 
@@ -235,11 +235,6 @@
                                     <div class="form-group"> 
                                         <label for="app-marca" class="input-label">Marca</label> 
                                         <input type="text" id="app-marca" class="text-input" required list="marcas-list">
-                                        <!-- ✅ BOTÓN VIN AÑADIDO -->
-                                        <button type="button" id="vin-lookup-btn" class="btn btn-outline" style="margin-top: 0.5rem; padding: 0.4rem 0.8rem; font-size: 0.85rem;">
-                                            <span class="material-icons-outlined" style="font-size: 1rem;">directions_car</span>
-                                            Buscar por VIN
-                                        </button>
                                     </div>
                                     <div class="form-group"> 
                                         <label for="app-serie" class="input-label">Serie / Modelo</label> 
@@ -332,25 +327,6 @@
                 <button id="confirm-modal-btn-no" class="btn btn-outline" type="button">Cancelar</button>
                 <button id="confirm-modal-btn-yes" class="btn btn-danger" type="button">Confirmar</button>
             </div>
-        </div>
-    </div>
-
-    <!-- ✅ MODAL DE VIN -->
-    <div id="vin-modal-overlay" class="modal-overlay" style="display: none;">
-        <div class="card modal-card" style="max-width: 450px; width: 90%;">
-            <h2 class="card-title">Buscar por VIN</h2>
-            <p class="card-description">Ingresa un VIN válido de 17 caracteres para autocompletar la aplicación.</p>
-            <form id="vin-form" class="form-grid" style="gap: 1rem; margin-top: 0.5rem;" onsubmit="return false;">
-                <div class="form-group">
-                    <label for="vin-input" class="input-label">VIN (17 caracteres)</label>
-                    <input type="text" id="vin-input" class="text-input" maxlength="17" placeholder="Ej: 1HGCM82633A123456" autocomplete="off">
-                    <p id="vin-feedback" class="status-message" style="margin-top: 0.5rem;"></p>
-                </div>
-                <div class="button-group modal-buttons">
-                    <button type="button" id="vin-cancel-btn" class="btn btn-outline">Cancelar</button>
-                    <button type="submit" id="vin-submit-btn" class="btn btn-primary">Buscar</button>
-                </div>
-            </form>
         </div>
     </div>
     
