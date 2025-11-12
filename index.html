@@ -10,10 +10,8 @@
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Outlined" rel="stylesheet">
     <link rel="stylesheet" href="admin-styles.css">
 
-    <!-- Librería para exportar a Excel (XLSX) -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 
-    <!-- Script de Firebase -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
         import { 
@@ -66,7 +64,6 @@
 </head>
 <body>
     
-    <!-- Contenedor de Login -->
     <div id="login-container" class="login-container">
         <div class="card login-card">
             <div class="header-logo-group" style="justify-content: center; margin-bottom: 1.5rem;">
@@ -96,7 +93,6 @@
         </div>
     </div>
 
-    <!-- Panel principal -->
     <div class="app-container" id="main-app-container" style="display: none;">
         <main class="main-content">
             <header class="content-header">
@@ -310,7 +306,6 @@
         </main>
     </div>
 
-    <!-- Botón de Tema -->
     <div class="floating-buttons-container right" id="floating-btn-container" style="display: none;">
         <button class="material-btn" id="darkBtn" aria-label="Cambiar modo oscuro" aria-pressed="false" type="button">
             <svg class="lp-icon-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="4"></line><line x1="12" y1="20" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="6.34" y2="6.34"></line><line x1="17.66" y1="17.66" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="4" y2="12"></line><line x1="20" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="6.34" y2="17.66"></line><line x1="17.66" y1="6.34" x2="19.78" y2="4.22"></line></svg>
@@ -318,7 +313,6 @@
         </button>
     </div>
 
-    <!-- Modal de Confirmación -->
     <div id="confirm-modal-overlay" class="modal-overlay" style="display: none;">
         <div id="confirm-modal-content" class="card modal-card">
             <h2 class="card-title" id="confirm-modal-title">Confirmar Acción</h2>
