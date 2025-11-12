@@ -1,5 +1,4 @@
 // Este script debe ser cargado como type="module" en el HTML
-// --- Importar herramientas de Firebase (expuestas en 'window' desde el HTML) ---
 const {
     auth,
     db,
@@ -24,7 +23,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     /**
      * Objeto principal que encapsula toda la lógica del panel de administración.
-     * Versión 2.9 (Dirty Check + Button Lock)
+     * Versión 2.10 (Anonymize History)
      */
     const AdminPanel = {
         
@@ -58,7 +57,7 @@ document.addEventListener('DOMContentLoaded', () => {
          * Método principal de inicialización.
          */
         init() {
-            console.log("Admin script 2.9 (Dirty Check + Button Lock) loaded. DOM ready.");
+            console.log("Admin script 2.10 (Anonymize History) loaded. DOM ready.");
             // 1. Obtener todos los elementos del DOM
             if (!this.getDomElements()) {
                 console.error("Error crítico: No se pudieron obtener los elementos esenciales del DOM. La aplicación no puede continuar.");
@@ -513,7 +512,7 @@ document.addEventListener('DOMContentLoaded', () => {
             },
 
             /**
-             * Renderiza el log de historial en la tabla.
+             * Renderiza el log de historial en la tabla. (VERSIÓN MEJORADA 2.10)
              */
             renderHistoryLog(historyDocs) {
                 if (!this.dom.historyLogTableBody) return;
@@ -521,7 +520,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     this.dom.historyLogTableBody.innerHTML = `
                         <tr class="empty-row-placeholder">
                             <td colspan="4">No hay historial de cambios todavía.</td>
-                        </tr>`;
+                        </tr>`; // <-- Colspan es 4
                     return;
                 }
                 let html = '';
@@ -534,11 +533,18 @@ document.addEventListener('DOMContentLoaded', () => {
                             hour: '2-digit', minute: '2-digit', second: '2-digit'
                         });
                     }
+
+                    // --- ⬇️ LÓGICA MEJORADA AQUÍ (v2.10) ⬇️ ---
+                    const emailCompleto = data.usuarioEmail || 'N/A';
+                    const nombreUsuario = emailCompleto.split('@')[0];
+                    // --- ⬆️ FIN DE LA LÓGICA ⬆️ ---
+
                     const accionClass = `log-action-${data.accion.replace(/ \(/g, '-').replace(')', '')}`;
                     let accionTexto = data.accion;
+                    
                     html += `
                         <tr>
-                            <td>${data.usuarioEmail || 'N/A'}</td>
+                            <td>${nombreUsuario}</td>
                             <td><span class="log-action ${accionClass}">${accionTexto}</span></td>
                             <td>${data.padId || 'N/A'}</td>
                             <td>${fechaFormateada}</td>
