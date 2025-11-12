@@ -24,7 +24,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     /**
      * Objeto principal que encapsula toda la lógica del panel de administración.
-     * Versión 2.8 (Refactor + Security Fix)
+     * Versión 2.9 (Dirty Check + Button Lock)
      */
     const AdminPanel = {
         
@@ -40,6 +40,7 @@ document.addEventListener('DOMContentLoaded', () => {
             searchTimeout: null,
             inactivityTimer: null,
             confirmResolve: null,
+            originalPadSnapshot: null // "Foto" de la pastilla al cargarla
         },
 
         // ----- CONSTANTES Y CONFIGURACIÓN -----
@@ -57,7 +58,7 @@ document.addEventListener('DOMContentLoaded', () => {
          * Método principal de inicialización.
          */
         init() {
-            console.log("Admin script 2.8 (Refactor + Security Fix) loaded. DOM ready.");
+            console.log("Admin script 2.9 (Dirty Check + Button Lock) loaded. DOM ready.");
             // 1. Obtener todos los elementos del DOM
             if (!this.getDomElements()) {
                 console.error("Error crítico: No se pudieron obtener los elementos esenciales del DOM. La aplicación no puede continuar.");
@@ -297,6 +298,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (this.dom.padFormMain) this.dom.padFormMain.reset();
                 this.state.currentEditingId = null;
                 this.state.currentApps = [];
+                this.state.originalPadSnapshot = null; // Borra la "foto"
+                
                 if (this.dom.formModeTitle) this.dom.formModeTitle.textContent = "Añadir Nueva Pastilla";
                 if (this.dom.saveButtonText) this.dom.saveButtonText.textContent = "Guardar Pastilla";
                 if (this.dom.savePadBtn) {
@@ -320,6 +323,16 @@ document.addEventListener('DOMContentLoaded', () => {
             resetLoginForm() {
                 if (this.dom.loginForm) this.dom.loginForm.reset();
                 if (this.dom.loginMessage) this.ui.showStatus(this.dom.loginMessage, "", false, 1); // Limpia mensajes
+            },
+
+            /**
+             * Habilita o deshabilita los botones de acción del formulario principal.
+             * @param {boolean} isDisabled True para deshabilitar, false para habilitar.
+             */
+            setFormActionsDisabled(isDisabled) {
+                if (this.dom.savePadBtn) this.dom.savePadBtn.disabled = isDisabled;
+                if (this.dom.deletePadBtn) this.dom.deletePadBtn.disabled = isDisabled;
+                if (this.dom.duplicatePadBtn) this.dom.duplicatePadBtn.disabled = isDisabled;
             },
 
             /**
@@ -437,6 +450,9 @@ document.addEventListener('DOMContentLoaded', () => {
                     console.error("No se encontró la pastilla en el cache con ID:", docId);
                     return;
                 }
+                
+                // Hacemos una copia profunda para la comparación
+                this.state.originalPadSnapshot = JSON.parse(JSON.stringify(padData));
                 
                 this.state.currentEditingId = docId;
                 if (this.dom.padRef) this.dom.padRef.value = (Array.isArray(padData.ref) ? padData.ref : []).join(', ');
@@ -793,6 +809,51 @@ document.addEventListener('DOMContentLoaded', () => {
                         return text;
                 }
             },
+            
+            /**
+             * Verifica si el formulario tiene cambios sin guardar.
+             * @returns {boolean} True si hay cambios, false si no.
+             */
+            isFormDirty() {
+                const snapshot = this.state.originalPadSnapshot;
+                // Si no hay snapshot (estamos en modo "Crear" o ya se guardó), no está "sucio"
+                if (!snapshot) return false;
+
+                try {
+                    // 1. Recrear el objeto "pad" desde el formulario actual
+                    // Usamos la misma lógica de estandarización que en la función savePad
+                    const currentFormData = {
+                        ref: (this.dom.padRef.value || '').split(',').map(s => this.logic.standardizeText(s.trim(), 'upper')).filter(Boolean),
+                        oem: (this.dom.padOem?.value || '').split(',').map(s => this.logic.standardizeText(s.trim(), 'upper')).filter(Boolean),
+                        fmsi: (this.dom.padFmsi?.value || '').split(',').map(s => this.logic.standardizeText(s.trim(), 'upper')).filter(Boolean),
+                        posición: this.dom.padPosicion?.value || 'Delantera',
+                        medidas: (this.dom.padMedidas?.value || '').split(',').map(s => s.trim()).filter(Boolean),
+                        imagenes: (this.dom.padImagenes?.value || '').split(',').map(s => s.trim()).filter(Boolean),
+                        aplicaciones: Array.isArray(this.state.currentApps) ? this.state.currentApps : [],
+                    };
+
+                    // 2. Recrear el objeto "snapshot" con la misma estructura (por si acaso)
+                    const snapshotData = {
+                        ref: (snapshot.ref || []).map(s => this.logic.standardizeText(s, 'upper')),
+                        oem: (snapshot.oem || []).map(s => this.logic.standardizeText(s, 'upper')),
+                        fmsi: (snapshot.fmsi || []).map(s => this.logic.standardizeText(s, 'upper')),
+                        posición: snapshot.posición || 'Delantera',
+                        medidas: (snapshot.medidas || []),
+                        imagenes: (snapshot.imagenes || []),
+                        aplicaciones: snapshot.aplicaciones || [],
+                    };
+
+                    // 3. Comparar (JSON.stringify es una forma fácil de comparar objetos)
+                    const isFormDirty = JSON.stringify(currentFormData) !== JSON.stringify(snapshotData);
+                    
+                    return isFormDirty;
+
+                } catch (e) {
+                    console.error("Error en isFormDirty:", e);
+                    // Si falla la comprobación, es más seguro asumir que hay cambios
+                    return true;
+                }
+            }
         },
 
         // =============================================
@@ -883,6 +944,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 if (this.dom.savePadStatus) this.ui.showStatus(this.dom.savePadStatus, "Guardando en Firebase...", false, 10000);
                 
+                this.ui.setFormActionsDisabled(true); // Bloquea botones
+
                 const newPad = {
                     ref: refsArray,
                     oem: (this.dom.padOem?.value || '').split(',').map(s => this.logic.standardizeText(s.trim(), 'upper')).filter(Boolean),
@@ -917,13 +980,15 @@ document.addEventListener('DOMContentLoaded', () => {
                     await setDoc(newDocRef, newPad);
                     this.api.logHistory(accionLog, docId);
                     
-                    this.ui.resetFormsAndMode();
+                    this.ui.resetFormsAndMode(); // Esto limpia el snapshot
                     this.ui.setActiveSection('dashboard');
                     if (this.dom.connectionStatusText) this.ui.showStatus(this.dom.connectionStatusText, message, false);
 
                 } catch (err) {
                     console.error("Error guardando en Firebase:", err);
                     if (this.dom.savePadStatus) this.ui.showStatus(this.dom.savePadStatus, `Error de Firebase: ${err.message}`, true, 6000);
+                } finally {
+                    this.ui.setFormActionsDisabled(false); // Desbloquea botones
                 }
             },
 
@@ -942,16 +1007,22 @@ document.addEventListener('DOMContentLoaded', () => {
                 
                 if (confirmed) {
                     if (this.dom.savePadStatus) this.ui.showStatus(this.dom.savePadStatus, "Eliminando de Firebase...", false, 10000);
+                    
+                    this.ui.setFormActionsDisabled(true); // Bloquea botones
+                    
                     try {
                         const docRef = doc(db, "pastillas", refId);
                         await deleteDoc(docRef);
                         this.api.logHistory("Eliminar", refId);
                         if (this.dom.connectionStatusText) this.ui.showStatus(this.dom.connectionStatusText, `Pastilla "${refId}" eliminada.`, false);
-                        this.ui.resetFormsAndMode();
+                        
+                        this.ui.resetFormsAndMode(); // Esto limpia el snapshot
                         this.ui.setActiveSection('dashboard');
                     } catch (err) {
                         console.error("Error eliminando de Firebase:", err);
                         if (this.dom.savePadStatus) this.ui.showStatus(this.dom.savePadStatus, `Error de Firebase: ${err.message}`, true, 6000);
+                    } finally {
+                        this.ui.setFormActionsDisabled(false); // Desbloquea botones
                     }
                 }
             },
@@ -1005,9 +1076,7 @@ document.addEventListener('DOMContentLoaded', () => {
                             this.state.allPadsCache = [];
                             this.state.currentApps = [];
                             
-                            // *** ARREGLO APLICADO AQUÍ ***
                             this.ui.resetLoginForm(); // ¡Limpia el formulario de login!
-                            
                             this.ui.resetFormsAndMode();
                             this.ui.updateDashboardStats();
                         }
@@ -1090,10 +1159,36 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 // --- Navegación ---
                 if (this.dom.navItems) this.dom.navItems.forEach(item => {
-                    item.addEventListener('click', (e) => {
+                    item.addEventListener('click', async (e) => { // ¡Convertido a async!
                         e.preventDefault();
                         const section = item.dataset?.section;
-                        if (section) this.ui.setActiveSection(section);
+                        if (!section) return;
+
+                        // 1. Comprobar si estamos en 'edit-pad' y si el form está "sucio"
+                        const activeSectionEl = document.querySelector('.content-section.active');
+                        const isLeavingEdit = (activeSectionEl && activeSectionEl.id === 'edit-pad');
+                        const isTargetEdit = section === 'edit-pad';
+
+                        // Solo chequear si salimos de 'edit-pad' hacia OTRA sección
+                        if (isLeavingEdit && !isTargetEdit && this.logic.isFormDirty()) {
+                            const confirmed = await this.ui.showCustomConfirm(
+                                "Tienes cambios sin guardar. ¿Estás seguro de que quieres salir y descartarlos?",
+                                "Cambios sin Guardar",
+                                "Descartar Cambios",
+                                "btn-danger"
+                            );
+                            
+                            // Si el usuario cancela (confirmed = false), no hacemos nada
+                            if (!confirmed) return;
+                        }
+                        
+                        // Si no está "sucio" o si el usuario confirmó
+                        this.ui.setActiveSection(section);
+                        
+                        // Si el usuario salió de "edit-pad", reseteamos el formulario
+                        if(isLeavingEdit && !isTargetEdit) {
+                           this.ui.resetFormsAndMode();
+                        }
                     });
                 });
 
@@ -1263,6 +1358,8 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             
             this.state.currentEditingId = null; // Clave para que se guarde como nueva
+            this.state.originalPadSnapshot = null; // Esto ya no es una "edición"
+            
             const firstRefId = this.dom.padRef.value.split(',')[0].trim() || 'pastilla';
             if (this.dom.formModeTitle) this.dom.formModeTitle.textContent = `Duplicando: ${firstRefId}`;
             if (this.dom.saveButtonText) this.dom.saveButtonText.textContent = "Guardar como Nueva";
