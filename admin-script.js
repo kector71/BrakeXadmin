@@ -26,7 +26,7 @@ document.addEventListener('DOMContentLoaded', () => {
      * Versión 2.10 (Anonymize History)
      */
     const AdminPanel = {
-        
+
         // ----- ESTADO DE LA APLICACIÓN -----
         state: {
             allPadsCache: [],
@@ -39,7 +39,14 @@ document.addEventListener('DOMContentLoaded', () => {
             searchTimeout: null,
             inactivityTimer: null,
             confirmResolve: null,
-            originalPadSnapshot: null // "Foto" de la pastilla al cargarla
+            originalPadSnapshot: null, // "Foto" de la pastilla al cargarla
+            // Índices para búsqueda optimizada
+            searchIndexes: {
+                ref: new Map(),
+                fmsi: new Map(),
+                oem: new Map(),
+                app: new Map()
+            }
         },
 
         // ----- CONSTANTES Y CONFIGURACIÓN -----
@@ -47,6 +54,9 @@ document.addEventListener('DOMContentLoaded', () => {
             INACTIVITY_DURATION: 15 * 60 * 1000, // 15 minutos
             anioRegex: /^(?:(\d{2}|\d{4})(?:-(\d{2}|\d{4}))?)$/,
             medidasRegex: /^\d+(\.\d+)?\s*x\s*\d+(\.\d+)?(,\s*\d+(\.\d+)?\s*x\s*\d+(\.\d+)?)*$/,
+            urlRegex: /^https?:\/\/.+/i,
+            MAX_STRING_LENGTH: 500,
+            MAX_ARRAY_LENGTH: 100
         },
 
         // ----- ELEMENTOS DEL DOM -----
@@ -66,7 +76,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             // 2. Configurar listeners de eventos
             this.initEventListeners();
-            
+
             // 3. Inicializar el modo oscuro (antes de que Firebase cargue)
             this.initDarkMode();
 
@@ -298,7 +308,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 this.state.currentEditingId = null;
                 this.state.currentApps = [];
                 this.state.originalPadSnapshot = null; // Borra la "foto"
-                
+
                 if (this.dom.formModeTitle) this.dom.formModeTitle.textContent = "Añadir Nueva Pastilla";
                 if (this.dom.saveButtonText) this.dom.saveButtonText.textContent = "Guardar Pastilla";
                 if (this.dom.savePadBtn) {
@@ -418,7 +428,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (!Array.isArray(this.state.currentApps) || index < 0 || index >= this.state.currentApps.length) return;
                 const app = this.state.currentApps[index];
                 if (!app) return;
-                
+
                 this.state.editingAppIndex = index;
                 if (this.dom.editingAppIndexInput) this.dom.editingAppIndexInput.value = index;
                 if (this.dom.appMarca) this.dom.appMarca.value = app.marca || '';
@@ -426,10 +436,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (this.dom.appLitros) this.dom.appLitros.value = app.litros || '';
                 if (this.dom.appAnio) this.dom.appAnio.value = app.año || '';
                 if (this.dom.appEspec) this.dom.appEspec.value = app.especificacion || '';
-                
+
                 if (this.dom.appAnio) this.logic.validateField(this.dom.appAnio, this.config.anioRegex);
                 if (this.dom.appMarca) this.logic.updateSerieDatalist(app.marca || "");
-                
+
                 if (this.dom.addAppButtonText) this.dom.addAppButtonText.textContent = "Actualizar App";
                 if (this.dom.addUpdateAppBtn) {
                     this.dom.addUpdateAppBtn.classList.remove('btn-tertiary');
@@ -449,28 +459,28 @@ document.addEventListener('DOMContentLoaded', () => {
                     console.error("No se encontró la pastilla en el cache con ID:", docId);
                     return;
                 }
-                
+
                 // Hacemos una copia profunda para la comparación
                 this.state.originalPadSnapshot = JSON.parse(JSON.stringify(padData));
-                
+
                 this.state.currentEditingId = docId;
                 if (this.dom.padRef) this.dom.padRef.value = (Array.isArray(padData.ref) ? padData.ref : []).join(', ');
                 if (this.dom.padOem) this.dom.padOem.value = (Array.isArray(padData.oem) ? padData.oem : []).join(', ');
                 if (this.dom.padFmsi) this.dom.padFmsi.value = (Array.isArray(padData.fmsi) ? padData.fmsi : []).join(', ');
                 if (this.dom.padPosicion) this.dom.padPosicion.value = padData.posición || 'Delantera';
-                
+
                 if (this.dom.padMedidas) {
                     if (typeof padData.medidas === 'string') this.dom.padMedidas.value = padData.medidas || '';
                     else if (Array.isArray(padData.medidas)) this.dom.padMedidas.value = padData.medidas.join(', ');
                     else this.dom.padMedidas.value = '';
                 }
                 if (this.dom.padMedidas) this.logic.validateField(this.dom.padMedidas, this.config.medidasRegex);
-                
+
                 if (this.dom.padImagenes) this.dom.padImagenes.value = (Array.isArray(padData.imagenes) ? padData.imagenes : []).join(', ');
                 this.ui.renderImagePreview();
-                
+
                 this.state.currentApps = Array.isArray(padData.aplicaciones) ? JSON.parse(JSON.stringify(padData.aplicaciones)) : [];
-                
+
                 const firstRefId = (Array.isArray(padData.ref) && padData.ref.length > 0) ? padData.ref[0] : '';
                 if (this.dom.formModeTitle) this.dom.formModeTitle.textContent = `Editando Pastilla: ${firstRefId}`;
                 if (this.dom.saveButtonText) this.dom.saveButtonText.textContent = "Actualizar Pastilla";
@@ -482,7 +492,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (this.dom.duplicatePadBtn) this.dom.duplicatePadBtn.style.display = 'inline-flex';
                 if (this.dom.clearSearchBtn) this.dom.clearSearchBtn.style.display = 'inline-flex';
                 if (this.dom.searchResults) this.dom.searchResults.innerHTML = '';
-                
+
                 this.ui.renderCurrentApps();
                 this.ui.resetAppForm();
                 this.ui.setActiveSection('edit-pad');
@@ -541,7 +551,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
                     const accionClass = `log-action-${data.accion.replace(/ \(/g, '-').replace(')', '')}`;
                     let accionTexto = data.accion;
-                    
+
                     html += `
                         <tr>
                             <td>${nombreUsuario}</td>
@@ -649,55 +659,78 @@ document.addEventListener('DOMContentLoaded', () => {
             },
 
             /**
-             * Ejecuta la búsqueda en el cache local.
+             * Ejecuta la búsqueda optimizada usando índices.
              */
             performSearch() {
                 if (!this.dom.searchRef || !this.dom.searchType || !this.dom.searchResults) return;
                 const query = this.dom.searchRef.value.trim().toLowerCase();
                 const searchType = this.dom.searchType.value;
+
                 if (query.length < 2) {
                     this.dom.searchResults.innerHTML = '<div class="search-feedback error">Escribe al menos 2 caracteres.</div>';
                     if (query.length === 0) this.dom.searchResults.innerHTML = '';
                     return;
                 }
+
                 if (!Array.isArray(this.state.allPadsCache) || this.state.allPadsCache.length === 0) {
                     this.dom.searchResults.innerHTML = '<div class="search-feedback error">La base de datos está vacía.</div>';
                     return;
                 }
-                const results = this.state.allPadsCache.reduce((acc, pad) => {
-                    let foundMatch = null;
-                    try {
-                        switch (searchType) {
-                            case 'ref': foundMatch = (pad.ref || []).find(r => r.toLowerCase().includes(query)); break;
-                            case 'fmsi': foundMatch = (pad.fmsi || []).find(f => f.toLowerCase().includes(query)); break;
-                            case 'oem': foundMatch = (pad.oem || []).find(o => o.toLowerCase().includes(query)); break;
-                            case 'app':
-                                const foundApp = (pad.aplicaciones || []).find(app =>
-                                    (app.marca && app.marca.toLowerCase().includes(query)) ||
-                                    (app.serie && app.serie.toLowerCase().includes(query))
-                                );
-                                if (foundApp) { foundMatch = `${foundApp.marca} ${foundApp.serie}`; }
-                                break;
-                        }
-                    } catch (e) { console.error("Error buscando en pastilla:", e, pad); }
-                    if (foundMatch) {
-                        acc.push({ pad, docId: pad.id, foundText: foundMatch });
+
+                try {
+                    const results = [];
+                    const seenPadIds = new Set();
+
+                    // Seleccionar el índice apropiado
+                    let searchIndex;
+                    switch (searchType) {
+                        case 'ref': searchIndex = this.state.searchIndexes.ref; break;
+                        case 'fmsi': searchIndex = this.state.searchIndexes.fmsi; break;
+                        case 'oem': searchIndex = this.state.searchIndexes.oem; break;
+                        case 'app': searchIndex = this.state.searchIndexes.app; break;
+                        default: searchIndex = new Map();
                     }
-                    return acc;
-                }, []);
-                
-                if (results.length === 0) {
-                    this.dom.searchResults.innerHTML = `<div class="search-feedback">No se encontró nada para "${query}".</div>`;
-                } else {
-                    this.dom.searchResults.innerHTML = results.map(r => `
-                        <div class="search-result-item">
-                            <div>
-                                <span class="search-result-match">${r.foundText}</span>
-                                <span class="search-result-context">(${searchType.toUpperCase()} / ${r.pad.ref[0] || 'N/A'})</span>
+
+                    // Búsqueda optimizada en el índice
+                    for (const [key, matches] of searchIndex.entries()) {
+                        if (key.includes(query)) {
+                            matches.forEach(match => {
+                                if (!seenPadIds.has(match.padId)) {
+                                    seenPadIds.add(match.padId);
+                                    const pad = this.state.allPadsCache.find(p => p.id === match.padId);
+                                    if (pad) {
+                                        results.push({
+                                            pad,
+                                            docId: match.padId,
+                                            foundText: match.value
+                                        });
+                                    }
+                                }
+                            });
+                        }
+                    }
+
+                    // Limitar resultados para performance
+                    const maxResults = 50;
+                    const limitedResults = results.slice(0, maxResults);
+
+                    if (limitedResults.length === 0) {
+                        this.dom.searchResults.innerHTML = `<div class="search-feedback">No se encontró nada para "${this.logic.standardizeText(query, 'none')}".</div>`;
+                    } else {
+                        const moreText = results.length > maxResults ? `<div class="search-feedback">Mostrando ${maxResults} de ${results.length} resultados. Refina tu búsqueda.</div>` : '';
+                        this.dom.searchResults.innerHTML = moreText + limitedResults.map(r => `
+                            <div class="search-result-item">
+                                <div>
+                                    <span class="search-result-match">${r.foundText}</span>
+                                    <span class="search-result-context">(${searchType.toUpperCase()} / ${r.pad.ref[0] || 'N/A'})</span>
+                                </div>
+                                <button type="button" class="btn btn-secondary edit-btn" data-id="${r.docId}">Cargar</button>
                             </div>
-                            <button type="button" class="btn btn-secondary edit-btn" data-id="${r.docId}">Cargar</button>
-                        </div>
-                    `).join('');
+                        `).join('');
+                    }
+                } catch (error) {
+                    console.error('Error en búsqueda:', error);
+                    this.dom.searchResults.innerHTML = '<div class="search-feedback error">Error al realizar la búsqueda. Intenta de nuevo.</div>';
                 }
             },
 
@@ -802,6 +835,8 @@ document.addEventListener('DOMContentLoaded', () => {
              */
             standardizeText(text, type = 'none') {
                 if (typeof text !== 'string' || !text) return '';
+                // Limitar longitud para seguridad
+                text = text.substring(0, this.config.MAX_STRING_LENGTH);
                 switch (type) {
                     case 'title':
                         return text.toLowerCase()
@@ -815,50 +850,150 @@ document.addEventListener('DOMContentLoaded', () => {
                         return text;
                 }
             },
-            
+
+            /**
+             * Parsea y estandariza una lista separada por comas.
+             */
+            parseAndStandardize(value, type = 'none') {
+                if (!value) return [];
+                return value.split(',')
+                    .map(s => this.logic.standardizeText(s.trim(), type))
+                    .filter(Boolean)
+                    .slice(0, this.config.MAX_ARRAY_LENGTH);
+            },
+
+            /**
+             * Parsea una lista simple separada por comas.
+             */
+            parseList(value) {
+                if (!value) return [];
+                return value.split(',')
+                    .map(s => s.trim())
+                    .filter(Boolean)
+                    .slice(0, this.config.MAX_ARRAY_LENGTH);
+            },
+
+            /**
+             * Valida y sanitiza URLs de imágenes.
+             */
+            validateImageUrls(urls) {
+                if (!Array.isArray(urls)) return [];
+                return urls.filter(url => {
+                    if (!url || typeof url !== 'string') return false;
+                    // Validar formato básico de URL
+                    return this.config.urlRegex.test(url);
+                });
+            },
+
+            /**
+             * Crea un objeto de pastilla desde el formulario.
+             */
+            createPadObjectFromForm() {
+                const imagenes = this.logic.parseList(this.dom.padImagenes?.value);
+                return {
+                    ref: this.logic.parseAndStandardize(this.dom.padRef?.value, 'none'),
+                    oem: this.logic.parseAndStandardize(this.dom.padOem?.value, 'none'),
+                    fmsi: this.logic.parseAndStandardize(this.dom.padFmsi?.value, 'none'),
+                    posición: this.dom.padPosicion?.value || 'Delantera',
+                    medidas: this.logic.parseList(this.dom.padMedidas?.value),
+                    imagenes: this.logic.validateImageUrls(imagenes),
+                    aplicaciones: Array.isArray(this.state.currentApps) ? [...this.state.currentApps] : []
+                };
+            },
+
             /**
              * Verifica si el formulario tiene cambios sin guardar.
              * @returns {boolean} True si hay cambios, false si no.
              */
             isFormDirty() {
                 const snapshot = this.state.originalPadSnapshot;
-                // Si no hay snapshot (estamos en modo "Crear" o ya se guardó), no está "sucio"
                 if (!snapshot) return false;
 
                 try {
-                    // 1. Recrear el objeto "pad" desde el formulario actual
-                    // Usamos la misma lógica de estandarización que en la función savePad
-                    const currentFormData = {
-                        ref: (this.dom.padRef.value || '').split(',').map(s => this.logic.standardizeText(s.trim(), 'upper')).filter(Boolean),
-                        oem: (this.dom.padOem?.value || '').split(',').map(s => this.logic.standardizeText(s.trim(), 'upper')).filter(Boolean),
-                        fmsi: (this.dom.padFmsi?.value || '').split(',').map(s => this.logic.standardizeText(s.trim(), 'upper')).filter(Boolean),
-                        posición: this.dom.padPosicion?.value || 'Delantera',
-                        medidas: (this.dom.padMedidas?.value || '').split(',').map(s => s.trim()).filter(Boolean),
-                        imagenes: (this.dom.padImagenes?.value || '').split(',').map(s => s.trim()).filter(Boolean),
-                        aplicaciones: Array.isArray(this.state.currentApps) ? this.state.currentApps : [],
-                    };
-
-                    // 2. Recrear el objeto "snapshot" con la misma estructura (por si acaso)
+                    const currentFormData = this.logic.createPadObjectFromForm();
                     const snapshotData = {
-                        ref: (snapshot.ref || []).map(s => this.logic.standardizeText(s, 'upper')),
-                        oem: (snapshot.oem || []).map(s => this.logic.standardizeText(s, 'upper')),
-                        fmsi: (snapshot.fmsi || []).map(s => this.logic.standardizeText(s, 'upper')),
+                        ref: (snapshot.ref || []).map(s => this.logic.standardizeText(s, 'none')),
+                        oem: (snapshot.oem || []).map(s => this.logic.standardizeText(s, 'none')),
+                        fmsi: (snapshot.fmsi || []).map(s => this.logic.standardizeText(s, 'none')),
                         posición: snapshot.posición || 'Delantera',
-                        medidas: (snapshot.medidas || []),
-                        imagenes: (snapshot.imagenes || []),
-                        aplicaciones: snapshot.aplicaciones || [],
+                        medidas: snapshot.medidas || [],
+                        imagenes: snapshot.imagenes || [],
+                        aplicaciones: snapshot.aplicaciones || []
                     };
 
-                    // 3. Comparar (JSON.stringify es una forma fácil de comparar objetos)
-                    const isFormDirty = JSON.stringify(currentFormData) !== JSON.stringify(snapshotData);
-                    
-                    return isFormDirty;
-
+                    return JSON.stringify(currentFormData) !== JSON.stringify(snapshotData);
                 } catch (e) {
                     console.error("Error en isFormDirty:", e);
-                    // Si falla la comprobación, es más seguro asumir que hay cambios
                     return true;
                 }
+            },
+
+            /**
+             * Construye índices de búsqueda para optimización.
+             */
+            buildSearchIndexes(pads) {
+                if (!Array.isArray(pads)) return;
+
+                // Limpiar índices existentes
+                this.state.searchIndexes.ref.clear();
+                this.state.searchIndexes.fmsi.clear();
+                this.state.searchIndexes.oem.clear();
+                this.state.searchIndexes.app.clear();
+
+                pads.forEach(pad => {
+                    const padId = pad.id;
+
+                    // Indexar referencias
+                    (pad.ref || []).forEach(ref => {
+                        const key = ref.toLowerCase();
+                        if (!this.state.searchIndexes.ref.has(key)) {
+                            this.state.searchIndexes.ref.set(key, []);
+                        }
+                        this.state.searchIndexes.ref.get(key).push({ padId, value: ref });
+                    });
+
+                    // Indexar FMSI
+                    (pad.fmsi || []).forEach(fmsi => {
+                        const key = fmsi.toLowerCase();
+                        if (!this.state.searchIndexes.fmsi.has(key)) {
+                            this.state.searchIndexes.fmsi.set(key, []);
+                        }
+                        this.state.searchIndexes.fmsi.get(key).push({ padId, value: fmsi });
+                    });
+
+                    // Indexar OEM
+                    (pad.oem || []).forEach(oem => {
+                        const key = oem.toLowerCase();
+                        if (!this.state.searchIndexes.oem.has(key)) {
+                            this.state.searchIndexes.oem.set(key, []);
+                        }
+                        this.state.searchIndexes.oem.get(key).push({ padId, value: oem });
+                    });
+
+                    // Indexar aplicaciones
+                    (pad.aplicaciones || []).forEach(app => {
+                        const marca = (app.marca || '').toLowerCase();
+                        const serie = (app.serie || '').toLowerCase();
+                        const combined = `${marca} ${serie}`.trim();
+
+                        if (combined) {
+                            if (!this.state.searchIndexes.app.has(combined)) {
+                                this.state.searchIndexes.app.set(combined, []);
+                            }
+                            this.state.searchIndexes.app.get(combined).push({
+                                padId,
+                                value: `${app.marca || ''} ${app.serie || ''}`.trim()
+                            });
+                        }
+                    });
+                });
+
+                console.log('Índices de búsqueda construidos:', {
+                    refs: this.state.searchIndexes.ref.size,
+                    fmsi: this.state.searchIndexes.fmsi.size,
+                    oem: this.state.searchIndexes.oem.size,
+                    apps: this.state.searchIndexes.app.size
+                });
             }
         },
 
@@ -874,13 +1009,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (!this.dom.loginEmail || !this.dom.loginPassword || !this.dom.loginBtn || !this.dom.loginMessage) return;
 
                 await this.api.setupSessionPersistence();
-                
+
                 const email = this.dom.loginEmail.value;
                 const password = this.dom.loginPassword.value;
                 this.dom.loginBtn.disabled = true;
                 this.dom.loginBtn.querySelector('span:last-child').textContent = "Ingresando...";
                 this.ui.showStatus(this.dom.loginMessage, "Conectando...", false, 10000);
-                
+
                 try {
                     await signInWithEmailAndPassword(auth, email, password);
                     this.ui.showStatus(this.dom.loginMessage, "¡Éxito!", false, 2000);
@@ -935,40 +1070,39 @@ document.addEventListener('DOMContentLoaded', () => {
              * Guarda o actualiza una pastilla en Firestore.
              */
             async savePad() {
+                // Validación de medidas
                 if (this.dom.padMedidas && !this.logic.validateField(this.dom.padMedidas, this.config.medidasRegex)) {
                     if (this.dom.savePadStatus) this.ui.showStatus(this.dom.savePadStatus, "El formato de Medidas es incorrecto. Debe ser '100 x 50'.", true, 5000);
                     this.dom.padMedidas.focus();
                     return;
                 }
-                
-                const refsArray = (this.dom.padRef.value || '').split(',').map(s => this.logic.standardizeText(s.trim(), 'upper')).filter(Boolean);
-                if (refsArray.length === 0) {
+
+                // Crear objeto usando el helper
+                const newPad = this.logic.createPadObjectFromForm();
+
+                // Validación de referencia obligatoria
+                if (newPad.ref.length === 0) {
                     if (this.dom.savePadStatus) this.ui.showStatus(this.dom.savePadStatus, "La Referencia (ID) es obligatoria.", true);
                     if (this.dom.padRef) this.dom.padRef.focus();
                     return;
                 }
 
-                if (this.dom.savePadStatus) this.ui.showStatus(this.dom.savePadStatus, "Guardando en Firebase...", false, 10000);
-                
-                this.ui.setFormActionsDisabled(true); // Bloquea botones
+                // Validación adicional de longitud de ID
+                const docId = newPad.ref[0];
+                if (docId.length > 100) {
+                    if (this.dom.savePadStatus) this.ui.showStatus(this.dom.savePadStatus, "La Referencia es demasiado larga (máx 100 caracteres).", true);
+                    if (this.dom.padRef) this.dom.padRef.focus();
+                    return;
+                }
 
-                const newPad = {
-                    ref: refsArray,
-                    oem: (this.dom.padOem?.value || '').split(',').map(s => this.logic.standardizeText(s.trim(), 'upper')).filter(Boolean),
-                    fmsi: (this.dom.padFmsi?.value || '').split(',').map(s => this.logic.standardizeText(s.trim(), 'upper')).filter(Boolean),
-                    posición: this.dom.padPosicion?.value || 'Delantera',
-                    medidas: (this.dom.padMedidas?.value || '').split(',').map(s => s.trim()).filter(Boolean),
-                    imagenes: (this.dom.padImagenes?.value || '').split(',').map(s => s.trim()).filter(Boolean),
-                    aplicaciones: Array.isArray(this.state.currentApps) ? this.state.currentApps : [],
-                };
-                
-                const docId = newPad.ref[0]; // El ID es la primera Ref
+                if (this.dom.savePadStatus) this.ui.showStatus(this.dom.savePadStatus, "Guardando en Firebase...", false, 10000);
+                this.ui.setFormActionsDisabled(true);
+
                 let message = "";
                 let accionLog = "Crear";
-                
+
                 try {
                     if (this.state.currentEditingId && this.state.currentEditingId !== docId) {
-                        // El ID principal cambió, se debe borrar el antiguo y crear uno nuevo
                         const oldDocRef = doc(db, "pastillas", this.state.currentEditingId);
                         await deleteDoc(oldDocRef);
                         this.api.logHistory("Eliminar (Movido)", this.state.currentEditingId);
@@ -985,16 +1119,19 @@ document.addEventListener('DOMContentLoaded', () => {
                     const newDocRef = doc(db, "pastillas", docId);
                     await setDoc(newDocRef, newPad);
                     this.api.logHistory(accionLog, docId);
-                    
-                    this.ui.resetFormsAndMode(); // Esto limpia el snapshot
+
+                    this.ui.resetFormsAndMode();
                     this.ui.setActiveSection('dashboard');
                     if (this.dom.connectionStatusText) this.ui.showStatus(this.dom.connectionStatusText, message, false);
 
                 } catch (err) {
                     console.error("Error guardando en Firebase:", err);
-                    if (this.dom.savePadStatus) this.ui.showStatus(this.dom.savePadStatus, `Error de Firebase: ${err.message}`, true, 6000);
+                    const errorMsg = err.code === 'permission-denied'
+                        ? 'Error: No tienes permisos para guardar.'
+                        : `Error de Firebase: ${err.message}`;
+                    if (this.dom.savePadStatus) this.ui.showStatus(this.dom.savePadStatus, errorMsg, true, 6000);
                 } finally {
-                    this.ui.setFormActionsDisabled(false); // Desbloquea botones
+                    this.ui.setFormActionsDisabled(false);
                 }
             },
 
@@ -1006,22 +1143,22 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (this.dom.savePadStatus) this.ui.showStatus(this.dom.savePadStatus, "No hay pastilla válida cargada para eliminar.", true);
                     return;
                 }
-                
+
                 const refId = this.state.currentEditingId;
                 const message = `¿Estás SEGURO de eliminar la pastilla "${refId}"? Esta acción es permanente.`;
                 const confirmed = await this.ui.showCustomConfirm(message, "Eliminar Pastilla", "Sí, Eliminar", "btn-danger");
-                
+
                 if (confirmed) {
                     if (this.dom.savePadStatus) this.ui.showStatus(this.dom.savePadStatus, "Eliminando de Firebase...", false, 10000);
-                    
+
                     this.ui.setFormActionsDisabled(true); // Bloquea botones
-                    
+
                     try {
                         const docRef = doc(db, "pastillas", refId);
                         await deleteDoc(docRef);
                         this.api.logHistory("Eliminar", refId);
                         if (this.dom.connectionStatusText) this.ui.showStatus(this.dom.connectionStatusText, `Pastilla "${refId}" eliminada.`, false);
-                        
+
                         this.ui.resetFormsAndMode(); // Esto limpia el snapshot
                         this.ui.setActiveSection('dashboard');
                     } catch (err) {
@@ -1075,13 +1212,13 @@ document.addEventListener('DOMContentLoaded', () => {
                             if (this.dom.mainAppContainer) this.dom.mainAppContainer.style.display = 'none';
                             if (this.dom.floatingBtnContainer) this.dom.floatingBtnContainer.style.display = 'none';
                             if (this.dom.loginContainer) this.dom.loginContainer.style.display = 'flex';
-                            
+
                             // Detener temporizador y limpiar datos
                             if (this.state.inactivityTimer) clearTimeout(this.state.inactivityTimer);
                             this.state.inactivityTimer = null;
                             this.state.allPadsCache = [];
                             this.state.currentApps = [];
-                            
+
                             this.ui.resetLoginForm(); // ¡Limpia el formulario de login!
                             this.ui.resetFormsAndMode();
                             this.ui.updateDashboardStats();
@@ -1106,12 +1243,15 @@ document.addEventListener('DOMContentLoaded', () => {
                         ...doc.data()
                     }));
                     this.state.allPadsCache.sort((a, b) => a.id.localeCompare(b.id, undefined, { numeric: true, sensitivity: 'base' }));
-                    
+
+                    // Construir índices de búsqueda
+                    this.logic.buildSearchIndexes(this.state.allPadsCache);
+
                     this.ui.updateDashboardStats();
                     this.logic.generateAutocompleteData(this.state.allPadsCache);
                     this.logic.updateMarcaDatalist();
                     this.ui.setConnectionStatus(true, `Conectado: ${this.state.allPadsCache.length} pastillas cargadas.`);
-                
+
                 }, (error) => {
                     console.error("Error al escuchar datos de Firestore:", error);
                     if (error.code === 'permission-denied') {
@@ -1183,17 +1323,17 @@ document.addEventListener('DOMContentLoaded', () => {
                                 "Descartar Cambios",
                                 "btn-danger"
                             );
-                            
+
                             // Si el usuario cancela (confirmed = false), no hacemos nada
                             if (!confirmed) return;
                         }
-                        
+
                         // Si no está "sucio" o si el usuario confirmó
                         this.ui.setActiveSection(section);
-                        
+
                         // Si el usuario salió de "edit-pad", reseteamos el formulario
-                        if(isLeavingEdit && !isTargetEdit) {
-                           this.ui.resetFormsAndMode();
+                        if (isLeavingEdit && !isTargetEdit) {
+                            this.ui.resetFormsAndMode();
                         }
                     });
                 });
@@ -1223,12 +1363,12 @@ document.addEventListener('DOMContentLoaded', () => {
                         this.ui.renderCurrentApps(this.dom.filterAppsInput.value);
                     });
                 }
-                
+
                 // --- Formulario Principal (Pad) ---
                 if (this.dom.savePadBtn) this.dom.savePadBtn.addEventListener('click', this.api.savePad.bind(this));
                 if (this.dom.deletePadBtn) this.dom.deletePadBtn.addEventListener('click', this.api.deletePad.bind(this));
                 if (this.dom.duplicatePadBtn) this.dom.duplicatePadBtn.addEventListener('click', this.handleDuplicatePad.bind(this));
-                
+
                 // --- Validaciones y Previsualización ---
                 if (this.dom.padImagenes) {
                     this.dom.padImagenes.addEventListener('input', () => {
@@ -1250,7 +1390,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (this.dom.darkBtn) {
                     this.dom.darkBtn.addEventListener('click', this.handleDarkModeToggle.bind(this));
                 }
-                
+
                 console.log("Todos los event listeners configurados.");
             } catch (error) {
                 console.error("Error crítico añadiendo listeners:", error);
@@ -1300,29 +1440,29 @@ document.addEventListener('DOMContentLoaded', () => {
                 this.dom.appAnio.focus();
                 return;
             }
-            
+
             const app = {
-                marca: this.logic.standardizeText(this.dom.appMarca.value.trim(), 'title'),
-                serie: this.logic.standardizeText(this.dom.appSerie.value.trim(), 'title'),
+                marca: this.logic.standardizeText(this.dom.appMarca.value.trim(), 'none'),
+                serie: this.logic.standardizeText(this.dom.appSerie.value.trim(), 'none'),
                 litros: this.dom.appLitros?.value.trim() || '',
                 año: this.dom.appAnio?.value.trim() || '',
                 especificacion: this.dom.appEspec?.value.trim() || '',
             };
-            
+
             if (!app.marca || !app.serie) {
                 if (this.dom.savePadStatus) this.ui.showStatus(this.dom.savePadStatus, "Marca y Serie son obligatorios para la aplicación.", true, 3000);
                 if (this.dom.appMarca && !app.marca) this.dom.appMarca.focus(); else if (this.dom.appSerie) this.dom.appSerie.focus();
                 return;
             }
-            
+
             if (!Array.isArray(this.state.currentApps)) this.state.currentApps = [];
-            
+
             if (this.state.editingAppIndex > -1 && this.state.editingAppIndex < this.state.currentApps.length) {
                 this.state.currentApps[this.state.editingAppIndex] = app;
             } else {
                 this.state.currentApps.push(app);
             }
-            
+
             this.ui.renderCurrentApps(this.dom.filterAppsInput?.value || ""); // Re-renderizar con filtro
             this.ui.resetAppForm();
             if (this.dom.appMarca) this.dom.appMarca.focus();
@@ -1335,18 +1475,18 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!indexStr) return;
             const index = parseInt(indexStr, 10);
             if (isNaN(index) || !Array.isArray(this.state.currentApps) || index < 0 || index >= this.state.currentApps.length) return;
-            
+
             if (button.classList.contains('edit-app-btn')) {
                 this.ui.loadAppDataIntoForm(index);
             } else if (button.classList.contains('remove-app-btn')) {
                 const appToRemove = this.state.currentApps[index];
                 const message = `¿Seguro que quieres eliminar la aplicación "${appToRemove.marca || ''} ${appToRemove.serie || ''}"?`;
                 const confirmed = await this.ui.showCustomConfirm(message, "Eliminar Aplicación", "Eliminar", "btn-danger");
-                
+
                 if (confirmed) {
                     this.state.currentApps.splice(index, 1);
                     this.ui.renderCurrentApps(this.dom.filterAppsInput?.value || ""); // Re-renderizar con filtro
-                    
+
                     if (this.state.editingAppIndex === index) {
                         this.ui.resetAppForm();
                     } else if (this.state.editingAppIndex > index) {
@@ -1362,10 +1502,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (this.dom.savePadStatus) this.ui.showStatus(this.dom.savePadStatus, "Carga una pastilla primero para duplicarla.", true);
                 return;
             }
-            
+
             this.state.currentEditingId = null; // Clave para que se guarde como nueva
             this.state.originalPadSnapshot = null; // Esto ya no es una "edición"
-            
+
             const firstRefId = this.dom.padRef.value.split(',')[0].trim() || 'pastilla';
             if (this.dom.formModeTitle) this.dom.formModeTitle.textContent = `Duplicando: ${firstRefId}`;
             if (this.dom.saveButtonText) this.dom.saveButtonText.textContent = "Guardar como Nueva";
@@ -1383,17 +1523,17 @@ document.addEventListener('DOMContentLoaded', () => {
             this.ui.createRippleEffect(e);
             const isDark = document.body.classList.toggle('lp-dark');
             this.dom.darkBtn?.setAttribute('aria-pressed', String(isDark));
-            
+
             const iconAnimation = (icon, isShowing) => {
                 if (!icon) return;
                 icon.style.transition = 'opacity 0.3s ease-in-out, transform 0.3s ease-in-out';
                 icon.style.opacity = isShowing ? '1' : '0';
                 icon.style.transform = isShowing ? 'scale(1)' : 'scale(0.8)';
             };
-            
+
             iconAnimation(this.dom.sunIcon, !isDark);
             iconAnimation(this.dom.moonIcon, isDark);
-            
+
             try { localStorage.setItem('darkModeAdminPref', isDark ? '1' : '0'); }
             catch (storageError) { console.warn("No se pudo guardar pref modo oscuro:", storageError); }
         },
@@ -1433,22 +1573,22 @@ document.addEventListener('DOMContentLoaded', () => {
                 const savedPref = localStorage.getItem('darkModeAdminPref');
                 const prefersDarkScheme = window.matchMedia?.("(prefers-color-scheme: dark)").matches ?? false;
                 let startDark = (savedPref === '1') || (savedPref === null && prefersDarkScheme);
-                
+
                 if (startDark) document.body.classList.add('lp-dark');
                 else document.body.classList.remove('lp-dark');
-                
+
                 if (this.dom.darkBtn) this.dom.darkBtn.setAttribute('aria-pressed', String(startDark));
-                
+
                 const initialIconAnimation = (icon, isShowing) => {
                     if (!icon) return;
                     icon.style.transition = 'none';
                     icon.style.opacity = isShowing ? '1' : '0';
                     icon.style.transform = isShowing ? 'scale(1)' : 'scale(0.8)';
                 };
-                
+
                 initialIconAnimation(this.dom.sunIcon, !startDark);
                 initialIconAnimation(this.dom.moonIcon, startDark);
-                
+
                 requestAnimationFrame(() => {
                     if (this.dom.sunIcon) this.dom.sunIcon.style.transition = '';
                     if (this.dom.moonIcon) this.dom.moonIcon.style.transition = '';
