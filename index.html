@@ -69,30 +69,58 @@
 <body>
 
     <div id="login-container" class="login-container">
+        <!-- Decorative animated background -->
+        <div class="login-bg-decoration">
+            <div class="login-circle login-circle-1"></div>
+            <div class="login-circle login-circle-2"></div>
+            <div class="login-circle login-circle-3"></div>
+        </div>
+        
         <div class="card login-card">
             <div class="header-logo-group" style="justify-content: center; margin-bottom: 1.5rem;">
                 <span class="material-icons-outlined logo-icon">speed</span>
                 <span class="logo-text">Brake X Admin</span>
             </div>
+            <p class="login-subtitle">Inicia sesión para continuar</p>
+            
             <form id="login-form" class="form-grid" style="grid-template-columns: 1fr;" onsubmit="return false;">
                 <div class="form-group">
                     <label for="login-email" class="input-label">Email</label>
-                    <input type="email" id="login-email" class="text-input" required>
+                    <div class="input-wrapper-with-icon">
+                        <span class="material-icons-outlined input-icon">email</span>
+                        <input type="email" id="login-email" class="text-input input-with-icon" required 
+                               placeholder="tu@email.com" autocomplete="email">
+                    </div>
                 </div>
                 <div class="form-group">
                     <label for="login-password" class="input-label">Contraseña</label>
-                    <div class="input-wrapper-relative">
-                        <input type="password" id="login-password" class="text-input" required>
+                    <div class="input-wrapper-with-icon">
+                        <span class="material-icons-outlined input-icon">lock</span>
+                        <input type="password" id="login-password" class="text-input input-with-icon" required 
+                               placeholder="••••••••" autocomplete="current-password">
                         <button type="button" id="login-password-toggle" class="btn-icon-toggle"
                             aria-label="Mostrar contraseña">
                             <span class="material-icons-outlined">visibility</span>
                         </button>
                     </div>
                 </div>
+                
+                <div class="form-group-checkbox">
+                    <label class="checkbox-container">
+                        <input type="checkbox" id="login-remember" class="checkbox-input">
+                        <span class="checkbox-custom"></span>
+                        <span class="checkbox-label">Recordarme</span>
+                    </label>
+                </div>
+                
                 <p id="login-message" class="status-message" role="status" aria-live="polite"></p>
-                <button id="login-btn" class="btn btn-primary" type="submit">
-                    <span class="material-icons-outlined">login</span>
-                    <span>Ingresar</span>
+                
+                <button id="login-btn" class="btn btn-primary btn-login" type="submit">
+                    <span class="btn-login-content">
+                        <span class="material-icons-outlined">login</span>
+                        <span>Ingresar</span>
+                    </span>
+                    <span class="btn-login-spinner"></span>
                 </button>
             </form>
         </div>

@@ -80,10 +80,13 @@ document.addEventListener('DOMContentLoaded', () => {
             // 3. Inicializar el modo oscuro (antes de que Firebase cargue)
             this.initDarkMode();
 
-            // 4. Conectar a Firebase (esto manejará la lógica de login/logout)
+            // 4. Inicializar funcionalidad "Recordarme"
+            this.initRememberMe();
+
+            // 5. Conectar a Firebase (esto manejará la lógica de login/logout)
             this.api.initFirebase();
 
-            // 5. Configurar UI inicial
+            // 6. Configurar UI inicial
             this.ui.setActiveSection('dashboard');
             this.ui.updateSearchPlaceholder();
             console.log("Admin panel UI inicializado, conectando a Firebase...");
@@ -1010,21 +1013,97 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 await this.api.setupSessionPersistence();
 
-                const email = this.dom.loginEmail.value;
+                const email = this.dom.loginEmail.value.trim();
                 const password = this.dom.loginPassword.value;
+
+                // Validación básica
+                if (!email || !password) {
+                    this.ui.showStatus(this.dom.loginMessage, "Por favor completa todos los campos.", true, 3000);
+                    return;
+                }
+
+                // Validación de email
+                const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+                if (!emailRegex.test(email)) {
+                    this.ui.showStatus(this.dom.loginMessage, "Por favor ingresa un email válido.", true, 3000);
+                    this.dom.loginEmail.focus();
+                    return;
+                }
+
+                // Activar estado de carga
                 this.dom.loginBtn.disabled = true;
-                this.dom.loginBtn.querySelector('span:last-child').textContent = "Ingresando...";
+                this.dom.loginBtn.classList.add('loading');
                 this.ui.showStatus(this.dom.loginMessage, "Conectando...", false, 10000);
 
                 try {
                     await signInWithEmailAndPassword(auth, email, password);
-                    this.ui.showStatus(this.dom.loginMessage, "¡Éxito!", false, 2000);
+
+                    // Guardar email si "Recordarme" está marcado
+                    const rememberCheckbox = document.getElementById('login-remember');
+                    if (rememberCheckbox && rememberCheckbox.checked) {
+                        try {
+                            localStorage.setItem('rememberedEmail', email);
+                        } catch (storageError) {
+                            console.warn("No se pudo guardar el email:", storageError);
+                        }
+                    } else {
+                        try {
+                            localStorage.removeItem('rememberedEmail');
+                        } catch (storageError) {
+                            console.warn("No se pudo eliminar el email guardado:", storageError);
+                        }
+                    }
+
+                    this.ui.showStatus(this.dom.loginMessage, "¡Inicio de sesión exitoso!", false, 2000);
+
+                    // Animación de salida suave
+                    setTimeout(() => {
+                        if (this.dom.loginContainer) {
+                            this.dom.loginContainer.classList.add('fade-out');
+                        }
+                    }, 500);
+
                 } catch (error) {
                     console.error("Error de inicio de sesión:", error.code, error.message);
-                    this.ui.showStatus(this.dom.loginMessage, "Error: Usuario o contraseña incorrectos.", true, 5000);
+
+                    // Mensajes de error específicos
+                    let errorMessage = "Error al iniciar sesión. Intenta de nuevo.";
+                    switch (error.code) {
+                        case 'auth/invalid-email':
+                            errorMessage = "El formato del email es inválido.";
+                            break;
+                        case 'auth/user-disabled':
+                            errorMessage = "Esta cuenta ha sido deshabilitada.";
+                            break;
+                        case 'auth/user-not-found':
+                            errorMessage = "No existe una cuenta con este email.";
+                            break;
+                        case 'auth/wrong-password':
+                            errorMessage = "Contraseña incorrecta.";
+                            break;
+                        case 'auth/invalid-credential':
+                            errorMessage = "Credenciales inválidas. Verifica tu email y contraseña.";
+                            break;
+                        case 'auth/too-many-requests':
+                            errorMessage = "Demasiados intentos fallidos. Intenta más tarde.";
+                            break;
+                        case 'auth/network-request-failed':
+                            errorMessage = "Error de conexión. Verifica tu internet.";
+                            break;
+                    }
+
+                    this.ui.showStatus(this.dom.loginMessage, errorMessage, true, 5000);
+
+                    // Animación de shake en el formulario
+                    if (this.dom.loginForm) {
+                        this.dom.loginForm.classList.add('error-animation');
+                        setTimeout(() => {
+                            this.dom.loginForm.classList.remove('error-animation');
+                        }, 500);
+                    }
                 } finally {
                     this.dom.loginBtn.disabled = false;
-                    this.dom.loginBtn.querySelector('span:last-child').textContent = "Ingresar";
+                    this.dom.loginBtn.classList.remove('loading');
                 }
             },
 
@@ -1594,6 +1673,48 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (this.dom.moonIcon) this.dom.moonIcon.style.transition = '';
                 });
             } catch (storageError) { console.warn("No se pudo aplicar pref modo oscuro:", storageError); }
+        },
+
+        /**
+         * Inicializa la funcionalidad "Recordarme" cargando el email guardado.
+         */
+        initRememberMe() {
+            try {
+                const rememberedEmail = localStorage.getItem('rememberedEmail');
+                if (rememberedEmail && this.dom.loginEmail) {
+                    this.dom.loginEmail.value = rememberedEmail;
+                    const rememberCheckbox = document.getElementById('login-remember');
+                    if (rememberCheckbox) {
+                        rememberCheckbox.checked = true;
+                    }
+                    // Auto-focus en el campo de contraseña si hay email guardado
+                    if (this.dom.loginPassword) {
+                        this.dom.loginPassword.focus();
+                    }
+                }
+            } catch (storageError) {
+                console.warn("No se pudo cargar email guardado:", storageError);
+            }
+        },
+
+        /**
+         * Maneja el toggle de visibilidad de contraseña.
+         */
+        handlePasswordToggle() {
+            if (!this.dom.loginPassword || !this.dom.loginPasswordToggle) return;
+
+            const icon = this.dom.loginPasswordToggle.querySelector('.material-icons-outlined');
+            if (!icon) return;
+
+            if (this.dom.loginPassword.type === 'password') {
+                this.dom.loginPassword.type = 'text';
+                icon.textContent = 'visibility_off';
+                this.dom.loginPasswordToggle.setAttribute('aria-label', 'Ocultar contraseña');
+            } else {
+                this.dom.loginPassword.type = 'password';
+                icon.textContent = 'visibility';
+                this.dom.loginPasswordToggle.setAttribute('aria-label', 'Mostrar contraseña');
+            }
         },
 
     }; // Fin del objeto AdminPanel
