@@ -154,6 +154,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     deletePadBtn: getEl('delete-pad-btn'),
                     duplicatePadBtn: getEl('duplicate-pad-btn'),
                     darkBtn: getEl('darkBtn'),
+                    themeToggleLogin: getEl('theme-toggle-login'),
                     sunIcon: document.querySelector('.lp-icon-sun'),
                     moonIcon: document.querySelector('.lp-icon-moon'),
                     savePadStatus: getEl('save-pad-status'),
@@ -1373,6 +1374,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 // --- Login/Logout ---
                 if (this.dom.loginForm) this.dom.loginForm.addEventListener('submit', this.api.handleLogin.bind(this));
                 if (this.dom.logoutBtn) this.dom.logoutBtn.addEventListener('click', this.api.handleLogout.bind(this));
+                if (this.dom.themeToggleLogin) this.dom.themeToggleLogin.addEventListener('click', this.handleDarkModeToggle.bind(this));
                 if (this.dom.loginPasswordToggle) this.dom.loginPasswordToggle.addEventListener('click', this.handlePasswordToggle.bind(this));
 
                 // --- Modales ---
@@ -1602,6 +1604,7 @@ document.addEventListener('DOMContentLoaded', () => {
             this.ui.createRippleEffect(e);
             const isDark = document.body.classList.toggle('lp-dark');
             this.dom.darkBtn?.setAttribute('aria-pressed', String(isDark));
+            this.dom.themeToggleLogin?.setAttribute('aria-pressed', String(isDark));
 
             const iconAnimation = (icon, isShowing) => {
                 if (!icon) return;
@@ -1610,8 +1613,17 @@ document.addEventListener('DOMContentLoaded', () => {
                 icon.style.transform = isShowing ? 'scale(1)' : 'scale(0.8)';
             };
 
+            // Animate main app icons
             iconAnimation(this.dom.sunIcon, !isDark);
             iconAnimation(this.dom.moonIcon, isDark);
+
+            // Animate login theme toggle icons
+            if (this.dom.themeToggleLogin) {
+                const loginSunIcon = this.dom.themeToggleLogin.querySelector('.lp-icon-sun');
+                const loginMoonIcon = this.dom.themeToggleLogin.querySelector('.lp-icon-moon');
+                iconAnimation(loginSunIcon, !isDark);
+                iconAnimation(loginMoonIcon, isDark);
+            }
 
             try { localStorage.setItem('darkModeAdminPref', isDark ? '1' : '0'); }
             catch (storageError) { console.warn("No se pudo guardar pref modo oscuro:", storageError); }
@@ -1657,6 +1669,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 else document.body.classList.remove('lp-dark');
 
                 if (this.dom.darkBtn) this.dom.darkBtn.setAttribute('aria-pressed', String(startDark));
+                if (this.dom.themeToggleLogin) this.dom.themeToggleLogin.setAttribute('aria-pressed', String(startDark));
 
                 const initialIconAnimation = (icon, isShowing) => {
                     if (!icon) return;
@@ -1665,12 +1678,27 @@ document.addEventListener('DOMContentLoaded', () => {
                     icon.style.transform = isShowing ? 'scale(1)' : 'scale(0.8)';
                 };
 
+                // Icons for main app dark button
                 initialIconAnimation(this.dom.sunIcon, !startDark);
                 initialIconAnimation(this.dom.moonIcon, startDark);
+
+                // Icons for login theme toggle
+                if (this.dom.themeToggleLogin) {
+                    const loginSunIcon = this.dom.themeToggleLogin.querySelector('.lp-icon-sun');
+                    const loginMoonIcon = this.dom.themeToggleLogin.querySelector('.lp-icon-moon');
+                    initialIconAnimation(loginSunIcon, !startDark);
+                    initialIconAnimation(loginMoonIcon, startDark);
+                }
 
                 requestAnimationFrame(() => {
                     if (this.dom.sunIcon) this.dom.sunIcon.style.transition = '';
                     if (this.dom.moonIcon) this.dom.moonIcon.style.transition = '';
+                    if (this.dom.themeToggleLogin) {
+                        const loginSunIcon = this.dom.themeToggleLogin.querySelector('.lp-icon-sun');
+                        const loginMoonIcon = this.dom.themeToggleLogin.querySelector('.lp-icon-moon');
+                        if (loginSunIcon) loginSunIcon.style.transition = '';
+                        if (loginMoonIcon) loginMoonIcon.style.transition = '';
+                    }
                 });
             } catch (storageError) { console.warn("No se pudo aplicar pref modo oscuro:", storageError); }
         },

@@ -75,36 +75,55 @@
             <div class="login-circle login-circle-2"></div>
             <div class="login-circle login-circle-3"></div>
         </div>
-        
+
         <div class="card login-card">
+            <!-- Theme toggle button -->
+            <button class="theme-toggle-login" id="theme-toggle-login" aria-label="Cambiar modo oscuro"
+                aria-pressed="false" type="button">
+                <svg class="lp-icon-sun" viewBox="0 0 24 24">
+                    <circle cx="12" cy="12" r="5"></circle>
+                    <line x1="12" y1="1" x2="12" y2="4"></line>
+                    <line x1="12" y1="20" x2="12" y2="23"></line>
+                    <line x1="4.22" y1="4.22" x2="6.34" y2="6.34"></line>
+                    <line x1="17.66" y1="17.66" x2="19.78" y2="19.78"></line>
+                    <line x1="1" y1="12" x2="4" y2="12"></line>
+                    <line x1="20" y1="12" x2="23" y2="12"></line>
+                    <line x1="4.22" y1="19.78" x2="6.34" y2="17.66"></line>
+                    <line x1="17.66" y1="6.34" x2="19.78" y2="4.22"></line>
+                </svg>
+                <svg class="lp-icon-moon" viewBox="0 0 24 24" style="opacity:0;">
+                    <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                </svg>
+            </button>
+
             <div class="header-logo-group" style="justify-content: center; margin-bottom: 1.5rem;">
                 <span class="material-icons-outlined logo-icon">speed</span>
                 <span class="logo-text">Brake X Admin</span>
             </div>
             <p class="login-subtitle">Inicia sesión para continuar</p>
-            
+
             <form id="login-form" class="form-grid" style="grid-template-columns: 1fr;" onsubmit="return false;">
                 <div class="form-group">
                     <label for="login-email" class="input-label">Email</label>
                     <div class="input-wrapper-with-icon">
                         <span class="material-icons-outlined input-icon">email</span>
-                        <input type="email" id="login-email" class="text-input input-with-icon" required 
-                               placeholder="tu@email.com" autocomplete="email">
+                        <input type="email" id="login-email" class="text-input input-with-icon" required
+                            placeholder="tu@email.com" autocomplete="email">
                     </div>
                 </div>
                 <div class="form-group">
                     <label for="login-password" class="input-label">Contraseña</label>
                     <div class="input-wrapper-with-icon">
                         <span class="material-icons-outlined input-icon">lock</span>
-                        <input type="password" id="login-password" class="text-input input-with-icon" required 
-                               placeholder="••••••••" autocomplete="current-password">
+                        <input type="password" id="login-password" class="text-input input-with-icon" required
+                            placeholder="••••••••" autocomplete="current-password">
                         <button type="button" id="login-password-toggle" class="btn-icon-toggle"
                             aria-label="Mostrar contraseña">
                             <span class="material-icons-outlined">visibility</span>
                         </button>
                     </div>
                 </div>
-                
+
                 <div class="form-group-checkbox">
                     <label class="checkbox-container">
                         <input type="checkbox" id="login-remember" class="checkbox-input">
@@ -112,9 +131,9 @@
                         <span class="checkbox-label">Recordarme</span>
                     </label>
                 </div>
-                
+
                 <p id="login-message" class="status-message" role="status" aria-live="polite"></p>
-                
+
                 <button id="login-btn" class="btn btn-primary btn-login" type="submit">
                     <span class="btn-login-content">
                         <span class="material-icons-outlined">login</span>
