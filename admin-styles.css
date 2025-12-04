@@ -639,6 +639,31 @@ body {
     box-shadow: 0 0 0 3px rgba(248, 113, 113, 0.15);
 }
 
+/* --- Visual Field Validation (Empty/Filled) --- */
+.text-input.field-empty,
+.select-input.field-empty {
+    border-color: var(--color-red);
+    background-color: rgba(239, 68, 68, 0.05);
+}
+
+.text-input.field-filled,
+.select-input.field-filled {
+    border-color: var(--color-green);
+    background-color: rgba(16, 185, 129, 0.05);
+}
+
+.lp-dark .text-input.field-empty,
+.lp-dark .select-input.field-empty {
+    border-color: var(--color-red);
+    background-color: rgba(248, 113, 113, 0.1);
+}
+
+.lp-dark .text-input.field-filled,
+.lp-dark .select-input.field-filled {
+    border-color: var(--color-green);
+    background-color: rgba(52, 211, 153, 0.1);
+}
+
 
 .text-area-output {
     width: 100%;
