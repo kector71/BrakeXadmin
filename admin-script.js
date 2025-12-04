@@ -83,6 +83,9 @@ document.addEventListener('DOMContentLoaded', () => {
             // 4. Inicializar funcionalidad "Recordarme"
             this.initRememberMe();
 
+            // 4.1 Inicializar validación visual de campos
+            this.logic.initFieldValidation();
+
             // 5. Conectar a Firebase (esto manejará la lógica de login/logout)
             this.api.initFirebase();
 
@@ -327,7 +330,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (this.dom.imagePreviewContainer) this.dom.imagePreviewContainer.innerHTML = '';
                 if (this.dom.padMedidas) this.dom.padMedidas.classList.remove('is-valid', 'is-invalid');
                 this.ui.resetAppForm();
+                this.ui.resetAppForm();
                 this.ui.renderCurrentApps(); // Renderiza la lista vacía
+
+                // Reiniciar colores de validación
+                this.logic.initFieldValidation();
             },
 
             /**
@@ -452,6 +459,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (this.dom.cancelEditAppBtn) this.dom.cancelEditAppBtn.style.display = 'inline-flex';
                 if (this.dom.appFormDescription) this.dom.appFormDescription.textContent = `Editando: ${app.marca || ''} ${app.serie || ''}`;
                 if (this.dom.appMarca) this.dom.appMarca.focus();
+
+                // Actualizar colores
+                this.logic.initFieldValidation();
             },
 
             /**
@@ -501,6 +511,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 this.ui.resetAppForm();
                 this.ui.setActiveSection('edit-pad');
                 if (this.dom.padRef) this.dom.padRef.focus();
+
+                // Actualizar colores con los datos cargados
+                this.logic.initFieldValidation();
             },
 
             /**
@@ -614,6 +627,41 @@ document.addEventListener('DOMContentLoaded', () => {
                     element.classList.remove('is-valid');
                     return false;
                 }
+            },
+
+            /**
+             * Actualiza visualmente el campo (Rojo si vacío, Verde si lleno).
+             */
+            updateFieldVisuals(element) {
+                if (!element) return;
+                // Ignorar campos de búsqueda o filtros si se desea, o aplicarlo a todo.
+                // Aquí lo aplicamos a inputs dentro de formularios principales.
+                const value = element.value.trim();
+                if (value === "") {
+                    element.classList.add('field-empty');
+                    element.classList.remove('field-filled');
+                } else {
+                    element.classList.add('field-filled');
+                    element.classList.remove('field-empty');
+                }
+            },
+
+            /**
+             * Inicializa la validación visual en todos los inputs relevantes.
+             */
+            initFieldValidation() {
+                const forms = [this.dom.padFormMain, this.dom.appForm];
+                forms.forEach(form => {
+                    if (!form) return;
+                    const inputs = form.querySelectorAll('input:not([type="hidden"]), select, textarea');
+                    inputs.forEach(input => {
+                        // Estado inicial
+                        this.logic.updateFieldVisuals(input);
+                        // Listeners
+                        input.addEventListener('input', () => this.logic.updateFieldVisuals(input));
+                        input.addEventListener('change', () => this.logic.updateFieldVisuals(input));
+                    });
+                });
             },
 
             /**
@@ -1300,6 +1348,7 @@ document.addEventListener('DOMContentLoaded', () => {
                             this.state.currentApps = [];
 
                             this.ui.resetLoginForm(); // ¡Limpia el formulario de login!
+                            if (this.dom.loginContainer) this.dom.loginContainer.classList.remove('fade-out'); // FIX: Asegurar que sea visible
                             this.ui.resetFormsAndMode();
                             this.ui.updateDashboardStats();
                         }
