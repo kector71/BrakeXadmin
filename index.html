@@ -12,6 +12,9 @@
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Outlined" rel="stylesheet">
     <link rel="stylesheet" href="admin-styles.css">
     <link rel="stylesheet" href="visual-enhancements.css">
+    <link rel="stylesheet" href="input-fix.css">
+    <link rel="stylesheet" href="actions-fix.css">
+    <link rel="stylesheet" href="position-toggle.css">
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 
@@ -158,10 +161,7 @@
                             <span class="material-icons-outlined">dashboard</span>
                             <span>Dashboard</span>
                         </a>
-                        <a href="#" class="nav-item" data-section="edit-pad">
-                            <span class="material-icons-outlined">edit_note</span>
-                            <span>Añadir / Editar</span>
-                        </a>
+
                         <a href="#" class="nav-item" data-section="export-data">
                             <span class="material-icons-outlined">download</span>
                             <span>Exportar Datos</span>
@@ -201,7 +201,7 @@
                         </div>
                     </div>
 
-                    <div class="card">
+                    <div class="card card-compact">
                         <h2 class="card-title">Estado de la Base de Datos</h2>
                         <p class="card-description">Los datos se cargan en tiempo real desde Firebase Firestore.
                             Cualquier cambio se guardará automáticamente en la nube.</p>
@@ -210,9 +210,6 @@
                             <span id="connection-status-text">Conectando...</span>
                         </div>
                     </div>
-                </div>
-
-                <div id="edit-pad" class="content-section">
                     <div class="edit-layout-grid">
                         <div class="layout-col-main">
                             <div class="card">
@@ -248,12 +245,18 @@
                                     <div class="form-group"> <label for="pad-fmsi" class="input-label">FMSI (separadas
                                             por comma)</label> <input type="text" id="pad-fmsi" class="text-input">
                                     </div>
-                                    <div class="form-group"> <label for="pad-posicion"
-                                            class="input-label">Posición</label> <select id="pad-posicion"
-                                            class="select-input">
-                                            <option value="Delantera">Delantera</option>
-                                            <option value="Trasera">Trasera</option>
-                                        </select> </div>
+                                    <div class="form-group"> <label class="input-label">Posición</label>
+                                        <div class="position-toggle-group">
+                                            <button type="button" class="position-toggle active"
+                                                data-position="Delantera">
+                                                Delantera
+                                            </button>
+                                            <button type="button" class="position-toggle" data-position="Trasera">
+                                                Trasera
+                                            </button>
+                                        </div>
+                                        <input type="hidden" id="pad-posicion-value" value="Delantera">
+                                    </div>
                                     <div class="form-group">
                                         <label for="pad-medidas" class="input-label">Medidas (separadas por
                                             coma)</label>
@@ -427,7 +430,36 @@
         </div>
     </div>
 
+    <script>
+        // Fix para eliminar cualquier estilo inline de background que pueda estar causando problemas
+        document.addEventListener('DOMContentLoaded', function () {
+            setTimeout(function () {
+                const inputs = document.querySelectorAll('input[type="text"], select, .text-input, .select-input');
+                inputs.forEach(input => {
+                    // Remover estilos inline de background
+                    input.style.removeProperty('background');
+                    input.style.removeProperty('background-color');
+                    input.style.removeProperty('backgroundColor');
+
+                    // Observer para detectar cambios de estilo
+                    const observer = new MutationObserver(function (mutations) {
+                        mutations.forEach(function (mutation) {
+                            if (mutation.attributeName === 'style') {
+                                if (input.style.backgroundColor && input.style.backgroundColor !== '') {
+                                    input.style.removeProperty('background-color');
+                                }
+                            }
+                        });
+                    });
+
+                    observer.observe(input, { attributes: true, attributeFilter: ['style'] });
+                });
+            }, 500);
+        });
+    </script>
     <script type="module" src="admin-script.js"></script>
+    <script src="position-toggle.js"></script>
 </body>
+
 
 </html>

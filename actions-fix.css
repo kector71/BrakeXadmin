@@ -1,0 +1,33 @@
+/* ===================================== */
+/* MEJORA SECCIÓN ACCIONES PRINCIPALES */
+/* ===================================== */
+
+/* Contenedor de botones de acción */
+.action-button-group {
+    display: flex;
+    flex-direction: column;
+    gap: calc(var(--base-gap) * 1);
+}
+
+/* Botón principal de guardar - centrado y tamaño moderado */
+#save-pad-btn {
+    align-self: flex-start;
+    min-width: 200px;
+    padding: calc(var(--base-padding) * 0.8) calc(var(--base-padding) * 1.5);
+}
+
+/* Grupo de acciones secundarias */
+.secondary-actions-group {
+    display: flex;
+    gap: calc(var(--base-gap) * 0.8);
+}
+
+.secondary-actions-group .btn {
+    flex: 1;
+}
+
+/* Status message dentro de la sección de acciones */
+.card .status-message {
+    margin-bottom: calc(var(--base-gap) * 0.8);
+    min-height: auto;
+}

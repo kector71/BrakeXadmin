@@ -1,0 +1,105 @@
+/* ===================================== */
+/* FIX DEFINITIVO PARA FONDOS BLANCOS */
+/* ===================================== */
+
+/* Forzar background correcto para TODOS los inputs sin importar la clase */
+.text-input,
+.select-input,
+input[type="text"],
+select {
+    background-color: var(--input-bg) !important;
+    color: var(--text-color-primary) !important;
+}
+
+/* Dark mode específico */
+.lp-dark .text-input,
+.lp-dark .select-input,
+.lp-dark input[type="text"],
+.lp-dark select {
+    background-color: var(--input-bg) !important;
+    color: var(--text-color-primary) !important;
+}
+
+/* Estados de validación - NO cambiar el fondo */
+.text-input.field-filled,
+.select-input.field-filled,
+.text-input.field-empty,
+.select-input.field-empty {
+    background-color: var(--input-bg) !important;
+}
+
+.lp-dark .text-input.field-filled,
+.lp-dark .select-input.field-filled,
+.lp-dark .text-input.field-empty,
+.lp-dark .select-input.field-empty {
+    background-color: var(--input-bg) !important;
+}
+
+/* Focus - mantener el background del tema */
+.text-input:focus,
+.select-input:focus,
+input[type="text"]:focus,
+select:focus {
+    background-color: var(--input-bg) !important;
+    color: var(--text-color-primary) !important;
+}
+
+.lp-dark .text-input:focus,
+.lp-dark .select-input:focus,
+.lp-dark input[type="text"]:focus,
+.lp-dark select:focus {
+    background-color: var(--input-bg) !important;
+    color: var(--text-color-primary) !important;
+}
+
+/* ===================================== */
+/* FIX AUTOCOMPLETE Y AUTOFILL */
+/* ===================================== */
+
+/* Chrome/Edge/Safari - Autofill background fix */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+input:-webkit-autofill:active,
+select:-webkit-autofill,
+select:-webkit-autofill:hover,
+select:-webkit-autofill:focus,
+select:-webkit-autofill:active {
+    -webkit-box-shadow: 0 0 0 50px var(--input-bg) inset !important;
+    -webkit-text-fill-color: var(--text-color-primary) !important;
+    transition: background-color 5000s ease-in-out 0s !important;
+    caret-color: var(--text-color-primary) !important;
+}
+
+.lp-dark input:-webkit-autofill,
+.lp-dark input:-webkit-autofill:hover,
+.lp-dark input:-webkit-autofill:focus,
+.lp-dark input:-webkit-autofill:active,
+.lp-dark select:-webkit-autofill,
+.lp-dark select:-webkit-autofill:hover,
+.lp-dark select:-webkit-autofill:focus,
+.lp-dark select:-webkit-autofill:active {
+    -webkit-box-shadow: 0 0 0 50px var(--input-bg) inset !important;
+    -webkit-text-fill-color: var(--text-color-primary) !important;
+}
+
+/* Datalist y options styling */
+datalist {
+    background-color: var(--bg-color-card) !important;
+}
+
+option,
+select option {
+    background-color: var(--bg-color-card) !important;
+    color: var(--text-color-primary) !important;
+}
+
+.lp-dark datalist {
+    background-color: var(--bg-color-card) !important;
+}
+
+.lp-dark option,
+.lp-dark select option {
+    background-color: var(--bg-color-card) !important;
+    color: var(--text-color-primary) !important;
+}

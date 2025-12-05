@@ -1,0 +1,53 @@
+/* ===================================== */
+/* POSITION TOGGLE BUTTONS */
+/* ===================================== */
+
+.position-toggle-group {
+    display: flex;
+    gap: calc(var(--base-gap) * 0.8);
+    margin-top: calc(var(--base-gap) * 0.3);
+}
+
+.position-toggle {
+    flex: 1;
+    padding: calc(var(--base-padding) * 0.6) calc(var(--base-padding) * 1);
+    border: 1px solid var(--input-border);
+    border-radius: var(--base-radius);
+    background-color: var(--input-bg);
+    color: var(--text-color-secondary);
+    font-size: calc(var(--base-font-size) * 0.9);
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-family: var(--font-family);
+}
+
+.position-toggle:hover {
+    border-color: var(--input-focus-border);
+    background-color: rgba(59, 130, 246, 0.05);
+}
+
+.position-toggle.active {
+    border-color: var(--color-blue);
+    background-color: rgba(59, 130, 246, 0.15);
+    color: var(--color-blue);
+    font-weight: 600;
+}
+
+/* Dark mode */
+.lp-dark .position-toggle {
+    border-color: var(--input-border);
+    background-color: var(--input-bg);
+    color: var(--text-color-secondary);
+}
+
+.lp-dark .position-toggle:hover {
+    border-color: var(--input-focus-border);
+    background-color: rgba(96, 165, 250, 0.1);
+}
+
+.lp-dark .position-toggle.active {
+    border-color: var(--color-blue);
+    background-color: rgba(96, 165, 250, 0.2);
+    color: var(--color-blue);
+}

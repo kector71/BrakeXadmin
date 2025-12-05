@@ -509,7 +509,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 this.ui.renderCurrentApps();
                 this.ui.resetAppForm();
-                this.ui.setActiveSection('edit-pad');
+                this.ui.setActiveSection('dashboard');
                 if (this.dom.padRef) this.dom.padRef.focus();
 
                 // Actualizar colores con los datos cargados
@@ -942,11 +942,15 @@ document.addEventListener('DOMContentLoaded', () => {
              */
             createPadObjectFromForm() {
                 const imagenes = this.logic.parseList(this.dom.padImagenes?.value);
+                // Leer posición del input hidden creado por los toggle buttons
+                const posicionInput = document.getElementById('pad-posicion-value');
+                const posicion = posicionInput ? posicionInput.value : 'Delantera';
+
                 return {
                     ref: this.logic.parseAndStandardize(this.dom.padRef?.value, 'none'),
                     oem: this.logic.parseAndStandardize(this.dom.padOem?.value, 'none'),
                     fmsi: this.logic.parseAndStandardize(this.dom.padFmsi?.value, 'none'),
-                    posición: this.dom.padPosicion?.value || 'Delantera',
+                    posición: posicion,
                     medidas: this.logic.parseList(this.dom.padMedidas?.value),
                     imagenes: this.logic.validateImageUrls(imagenes),
                     aplicaciones: Array.isArray(this.state.currentApps) ? [...this.state.currentApps] : []
@@ -1440,12 +1444,12 @@ document.addEventListener('DOMContentLoaded', () => {
                         const section = item.dataset?.section;
                         if (!section) return;
 
-                        // 1. Comprobar si estamos en 'edit-pad' y si el form está "sucio"
+                        // 1. Comprobar si estamos en 'dashboard' (donde está el form) y si el form está "sucio"
                         const activeSectionEl = document.querySelector('.content-section.active');
-                        const isLeavingEdit = (activeSectionEl && activeSectionEl.id === 'edit-pad');
-                        const isTargetEdit = section === 'edit-pad';
+                        const isLeavingEdit = (activeSectionEl && activeSectionEl.id === 'dashboard');
+                        const isTargetEdit = section === 'dashboard';
 
-                        // Solo chequear si salimos de 'edit-pad' hacia OTRA sección
+                        // Solo chequear si salimos de 'dashboard' hacia OTRA sección
                         if (isLeavingEdit && !isTargetEdit && this.logic.isFormDirty()) {
                             const confirmed = await this.ui.showCustomConfirm(
                                 "Tienes cambios sin guardar. ¿Estás seguro de que quieres salir y descartarlos?",
@@ -1461,7 +1465,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         // Si no está "sucio" o si el usuario confirmó
                         this.ui.setActiveSection(section);
 
-                        // Si el usuario salió de "edit-pad", reseteamos el formulario
+                        // Si el usuario salió de "dashboard", reseteamos el formulario
                         if (isLeavingEdit && !isTargetEdit) {
                             this.ui.resetFormsAndMode();
                         }
