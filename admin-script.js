@@ -67,7 +67,7 @@ document.addEventListener('DOMContentLoaded', () => {
          * Método principal de inicialización.
          */
         init() {
-            console.log("Admin script 2.10 (Anonymize History) loaded. DOM ready.");
+            console.log("Admin script 3.0 (Position Per App) loaded. DOM ready.");
             // 1. Obtener todos los elementos del DOM
             if (!this.getDomElements()) {
                 console.error("Error crítico: No se pudieron obtener los elementos esenciales del DOM. La aplicación no puede continuar.");
@@ -76,17 +76,18 @@ document.addEventListener('DOMContentLoaded', () => {
 
             // 2. Configurar listeners de eventos
             this.initEventListeners();
+            this.initPositionToggles(); // Nuevo inicializador para los toggles
 
-            // 3. Inicializar el modo oscuro (antes de que Firebase cargue)
+            // 3. Inicializar el modo oscuro
             this.initDarkMode();
 
             // 4. Inicializar funcionalidad "Recordarme"
             this.initRememberMe();
 
-            // 4.1 Inicializar validación visual de campos
+            // 4.1 Inicializar validación visual
             this.logic.initFieldValidation();
 
-            // 5. Conectar a Firebase (esto manejará la lógica de login/logout)
+            // 5. Conectar a Firebase
             this.api.initFirebase();
 
             // 6. Configurar UI inicial
@@ -138,7 +139,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     padRef: getEl('pad-ref'),
                     padOem: getEl('pad-oem'),
                     padFmsi: getEl('pad-fmsi'),
-                    padPosicion: getEl('pad-posicion'),
+                    // padPosicion REMOVED from DOM cache as it's dynamic or different now
                     padMedidas: getEl('pad-medidas'),
                     padImagenes: getEl('pad-imagenes'),
                     imagePreviewContainer: getEl('image-preview-container'),
@@ -149,6 +150,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     appLitros: getEl('app-litros'),
                     appAnio: getEl('app-anio'),
                     appEspec: getEl('app-especificacion'),
+                    appPosicionValue: getEl('app-posicion-value'), // NUEVO CAPTURADO
                     addUpdateAppBtn: getEl('add-update-app-btn'),
                     addAppButtonText: getEl('add-app-button-text'),
                     cancelEditAppBtn: getEl('cancel-edit-app-btn'),
@@ -176,8 +178,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 };
 
                 // Verificación ESENCIAL
-                if (!this.dom.loginContainer || !this.dom.mainAppContainer || !this.dom.pageTitle || !this.dom.darkBtn) {
-                    throw new Error("Elementos esenciales (Contenedores principales) del layout no encontrados.");
+                if (!this.dom.loginContainer || !this.dom.mainAppContainer) {
+                    throw new Error("Elementos esenciales del layout no encontrados.");
                 }
                 console.log("DOM elements obtained successfully.");
                 return true;
@@ -186,6 +188,28 @@ document.addEventListener('DOMContentLoaded', () => {
                 console.error("Error obtaining DOM elements:", error);
                 return false;
             }
+        },
+
+        // --- NUEVO: Manejo de los Toggles de Posición ---
+        initPositionToggles() {
+            const toggles = document.querySelectorAll('.position-toggle');
+            toggles.forEach(toggle => {
+                toggle.addEventListener('click', (e) => {
+                    const btn = e.currentTarget;
+                    const group = btn.closest('.position-toggle-group');
+                    const hiddenInput = group.nextElementSibling; // El input hidden debe estar justo después
+
+                    // Quitar active de todos los hermanos
+                    group.querySelectorAll('.position-toggle').forEach(t => t.classList.remove('active'));
+                    // Activar el clickeado
+                    btn.classList.add('active');
+
+                    // Actualizar valor
+                    if (hiddenInput && hiddenInput.tagName === 'INPUT') {
+                        hiddenInput.value = btn.dataset.position;
+                    }
+                });
+            });
         },
 
         // =============================================
@@ -197,28 +221,28 @@ document.addEventListener('DOMContentLoaded', () => {
              * @returns {Promise<boolean>} Resuelve true si el usuario confirma, false si cancela.
              */
             showCustomConfirm(message, title = "Confirmar Acción", confirmText = "Confirmar", confirmClass = "btn-danger") {
-                if (!this.dom.confirmModalOverlay) return Promise.resolve(false);
-                this.dom.confirmModalTitle.textContent = title;
-                this.dom.confirmModalMessage.textContent = message;
-                this.dom.confirmModalBtnYes.textContent = confirmText;
-                this.dom.confirmModalBtnYes.className = 'btn';
-                this.dom.confirmModalBtnYes.classList.add(confirmClass);
-                this.dom.confirmModalOverlay.style.display = 'flex';
-                setTimeout(() => this.dom.confirmModalOverlay.classList.add('visible'), 10);
-                return new Promise((resolve) => { this.state.confirmResolve = resolve; });
+                if (!AdminPanel.dom.confirmModalOverlay) return Promise.resolve(false);
+                AdminPanel.dom.confirmModalTitle.textContent = title;
+                AdminPanel.dom.confirmModalMessage.textContent = message;
+                AdminPanel.dom.confirmModalBtnYes.textContent = confirmText;
+                AdminPanel.dom.confirmModalBtnYes.className = 'btn';
+                AdminPanel.dom.confirmModalBtnYes.classList.add(confirmClass);
+                AdminPanel.dom.confirmModalOverlay.style.display = 'flex';
+                setTimeout(() => AdminPanel.dom.confirmModalOverlay.classList.add('visible'), 10);
+                return new Promise((resolve) => { AdminPanel.state.confirmResolve = resolve; });
             },
 
             /**
              * Oculta el modal de confirmación.
              */
             hideCustomConfirm(result) {
-                if (!this.dom.confirmModalOverlay) return;
-                this.dom.confirmModalOverlay.classList.remove('visible');
+                if (!AdminPanel.dom.confirmModalOverlay) return;
+                AdminPanel.dom.confirmModalOverlay.classList.remove('visible');
                 setTimeout(() => {
-                    this.dom.confirmModalOverlay.style.display = 'none';
-                    if (this.state.confirmResolve) {
-                        this.state.confirmResolve(result);
-                        this.state.confirmResolve = null;
+                    AdminPanel.dom.confirmModalOverlay.style.display = 'none';
+                    if (AdminPanel.state.confirmResolve) {
+                        AdminPanel.state.confirmResolve(result);
+                        AdminPanel.state.confirmResolve = null;
                     }
                 }, 200);
             },
@@ -227,9 +251,9 @@ document.addEventListener('DOMContentLoaded', () => {
              * Activa una sección de contenido y resalta su item de navegación.
              */
             setActiveSection(sectionId) {
-                if (!sectionId || typeof sectionId !== 'string' || !this.dom.contentSections || !this.dom.navItems) return;
-                this.dom.contentSections.forEach(section => section.classList.remove('active'));
-                this.dom.navItems.forEach(item => {
+                if (!sectionId || typeof sectionId !== 'string' || !AdminPanel.dom.contentSections || !AdminPanel.dom.navItems) return;
+                AdminPanel.dom.contentSections.forEach(section => section.classList.remove('active'));
+                AdminPanel.dom.navItems.forEach(item => {
                     if (item.dataset && typeof item.dataset.section !== 'undefined') {
                         item.classList.toggle('active', item.dataset.section === sectionId);
                     }
@@ -238,13 +262,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (activeSection) {
                     activeSection.classList.add('active');
                     const navItem = document.querySelector(`.nav-item[data-section="${sectionId}"]`);
-                    if (this.dom.pageTitle && navItem) {
+                    if (AdminPanel.dom.pageTitle && navItem) {
                         const titleSpan = navItem.querySelector('span:last-child');
-                        if (titleSpan) this.dom.pageTitle.textContent = titleSpan.textContent || 'Admin Panel';
+                        if (titleSpan) AdminPanel.dom.pageTitle.textContent = titleSpan.textContent || 'Admin Panel';
                     }
                 } else {
                     console.error(`Sección con ID '${sectionId}' no encontrada. Volviendo a dashboard.`);
-                    if (sectionId !== 'dashboard') this.ui.setActiveSection('dashboard'); // Evitar bucle infinito
+                    if (sectionId !== 'dashboard') AdminPanel.ui.setActiveSection('dashboard'); // Evitar bucle infinito
                 }
             },
 
@@ -252,9 +276,9 @@ document.addEventListener('DOMContentLoaded', () => {
              * Renderiza las previsualizaciones de imágenes desde el campo de texto.
              */
             renderImagePreview() {
-                if (!this.dom.imagePreviewContainer || !this.dom.padImagenes) return;
-                const imageUrls = this.dom.padImagenes.value.split(',').map(url => url.trim()).filter(Boolean);
-                this.dom.imagePreviewContainer.innerHTML = '';
+                if (!AdminPanel.dom.imagePreviewContainer || !AdminPanel.dom.padImagenes) return;
+                const imageUrls = AdminPanel.dom.padImagenes.value.split(',').map(url => url.trim()).filter(Boolean);
+                AdminPanel.dom.imagePreviewContainer.innerHTML = '';
                 if (imageUrls.length === 0) return;
                 imageUrls.forEach(url => {
                     const wrapper = document.createElement('div');
@@ -270,7 +294,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         wrapper.appendChild(errorIcon);
                     };
                     wrapper.appendChild(img);
-                    this.dom.imagePreviewContainer.appendChild(wrapper);
+                    AdminPanel.dom.imagePreviewContainer.appendChild(wrapper);
                 });
             },
 
@@ -278,13 +302,13 @@ document.addEventListener('DOMContentLoaded', () => {
              * Actualiza el placeholder del campo de búsqueda según el tipo.
              */
             updateSearchPlaceholder() {
-                if (!this.dom.searchType || !this.dom.searchRef) return;
-                const type = this.dom.searchType.value;
+                if (!AdminPanel.dom.searchType || !AdminPanel.dom.searchRef) return;
+                const type = AdminPanel.dom.searchType.value;
                 switch (type) {
-                    case 'ref': this.dom.searchRef.placeholder = "Ej: 7104INC"; break;
-                    case 'fmsi': this.dom.searchRef.placeholder = "Ej: D1047"; break;
-                    case 'oem': this.dom.searchRef.placeholder = "Ej: 123456789"; break;
-                    case 'app': this.dom.searchRef.placeholder = "Ej: Chevrolet Spark"; break;
+                    case 'ref': AdminPanel.dom.searchRef.placeholder = "Ej: 7104INC"; break;
+                    case 'fmsi': AdminPanel.dom.searchRef.placeholder = "Ej: D1047"; break;
+                    case 'oem': AdminPanel.dom.searchRef.placeholder = "Ej: 123456789"; break;
+                    case 'app': AdminPanel.dom.searchRef.placeholder = "Ej: Chevrolet Spark"; break;
                 }
             },
 
@@ -292,57 +316,64 @@ document.addEventListener('DOMContentLoaded', () => {
              * Resetea el formulario de aplicaciones.
              */
             resetAppForm() {
-                if (this.dom.appForm) this.dom.appForm.reset();
-                if (this.dom.editingAppIndexInput) this.dom.editingAppIndexInput.value = "-1";
-                this.state.editingAppIndex = -1;
-                if (this.dom.addAppButtonText) this.dom.addAppButtonText.textContent = "Añadir App";
-                if (this.dom.addUpdateAppBtn) {
-                    this.dom.addUpdateAppBtn.classList.remove('btn-primary');
-                    this.dom.addUpdateAppBtn.classList.add('btn-tertiary');
+                if (AdminPanel.dom.appForm) AdminPanel.dom.appForm.reset();
+                if (AdminPanel.dom.editingAppIndexInput) AdminPanel.dom.editingAppIndexInput.value = "-1";
+                AdminPanel.state.editingAppIndex = -1;
+                if (AdminPanel.dom.addAppButtonText) AdminPanel.dom.addAppButtonText.textContent = "Añadir App";
+                if (AdminPanel.dom.addUpdateAppBtn) {
+                    AdminPanel.dom.addUpdateAppBtn.classList.remove('btn-primary');
+                    AdminPanel.dom.addUpdateAppBtn.classList.add('btn-tertiary');
                 }
-                if (this.dom.cancelEditAppBtn) this.dom.cancelEditAppBtn.style.display = 'none';
-                if (this.dom.appFormDescription) this.dom.appFormDescription.textContent = "Añade vehículos compatibles.";
-                if (this.dom.appAnio) this.dom.appAnio.classList.remove('is-valid', 'is-invalid');
-                if (this.dom.seriesList) this.dom.seriesList.innerHTML = '';
-                if (this.dom.filterAppsInput) this.dom.filterAppsInput.value = ''; // Limpiar filtro
+                if (AdminPanel.dom.cancelEditAppBtn) AdminPanel.dom.cancelEditAppBtn.style.display = 'none';
+                if (AdminPanel.dom.appFormDescription) AdminPanel.dom.appFormDescription.textContent = "Añade vehículos compatibles.";
+                if (AdminPanel.dom.appAnio) AdminPanel.dom.appAnio.classList.remove('is-valid', 'is-invalid');
+                if (AdminPanel.dom.seriesList) AdminPanel.dom.seriesList.innerHTML = '';
+                if (AdminPanel.dom.filterAppsInput) AdminPanel.dom.filterAppsInput.value = ''; // Limpiar filtro
+
+                // RESETEAR POSICION A DELANTERA POR DEFECTO
+                if (AdminPanel.dom.appPosicionValue) AdminPanel.dom.appPosicionValue.value = "Delantera";
+                const toggles = document.querySelectorAll('#app-form .position-toggle');
+                toggles.forEach(t => {
+                    if (t.dataset.position === 'Delantera') t.classList.add('active');
+                    else t.classList.remove('active');
+                });
             },
 
             /**
              * Resetea todos los formularios al modo "Crear Nuevo".
              */
             resetFormsAndMode() {
-                if (this.dom.padFormMain) this.dom.padFormMain.reset();
-                this.state.currentEditingId = null;
-                this.state.currentApps = [];
-                this.state.originalPadSnapshot = null; // Borra la "foto"
+                if (AdminPanel.dom.padFormMain) AdminPanel.dom.padFormMain.reset();
+                AdminPanel.state.currentEditingId = null;
+                AdminPanel.state.currentApps = [];
+                AdminPanel.state.originalPadSnapshot = null; // Borra la "foto"
 
-                if (this.dom.formModeTitle) this.dom.formModeTitle.textContent = "Añadir Nueva Pastilla";
-                if (this.dom.saveButtonText) this.dom.saveButtonText.textContent = "Guardar Pastilla";
-                if (this.dom.savePadBtn) {
-                    this.dom.savePadBtn.classList.remove('btn-danger', 'btn-secondary');
-                    this.dom.savePadBtn.classList.add('btn-primary');
+                if (AdminPanel.dom.formModeTitle) AdminPanel.dom.formModeTitle.textContent = "Añadir Nueva Pastilla";
+                if (AdminPanel.dom.saveButtonText) AdminPanel.dom.saveButtonText.textContent = "Guardar Pastilla";
+                if (AdminPanel.dom.savePadBtn) {
+                    AdminPanel.dom.savePadBtn.classList.remove('btn-danger', 'btn-secondary');
+                    AdminPanel.dom.savePadBtn.classList.add('btn-primary');
                 }
-                if (this.dom.deletePadBtn) this.dom.deletePadBtn.style.display = 'none';
-                if (this.dom.duplicatePadBtn) this.dom.duplicatePadBtn.style.display = 'none';
-                if (this.dom.searchRef) this.dom.searchRef.value = '';
-                if (this.dom.searchResults) this.dom.searchResults.innerHTML = '';
-                if (this.dom.clearSearchBtn) this.dom.clearSearchBtn.style.display = 'none';
-                if (this.dom.imagePreviewContainer) this.dom.imagePreviewContainer.innerHTML = '';
-                if (this.dom.padMedidas) this.dom.padMedidas.classList.remove('is-valid', 'is-invalid');
-                this.ui.resetAppForm();
-                this.ui.resetAppForm();
-                this.ui.renderCurrentApps(); // Renderiza la lista vacía
+                if (AdminPanel.dom.deletePadBtn) AdminPanel.dom.deletePadBtn.style.display = 'none';
+                if (AdminPanel.dom.duplicatePadBtn) AdminPanel.dom.duplicatePadBtn.style.display = 'none';
+                if (AdminPanel.dom.searchRef) AdminPanel.dom.searchRef.value = '';
+                if (AdminPanel.dom.searchResults) AdminPanel.dom.searchResults.innerHTML = '';
+                if (AdminPanel.dom.clearSearchBtn) AdminPanel.dom.clearSearchBtn.style.display = 'none';
+                if (AdminPanel.dom.imagePreviewContainer) AdminPanel.dom.imagePreviewContainer.innerHTML = '';
+                if (AdminPanel.dom.padMedidas) AdminPanel.dom.padMedidas.classList.remove('is-valid', 'is-invalid');
+                AdminPanel.ui.resetAppForm();
+                AdminPanel.ui.renderCurrentApps(); // Renderiza la lista vacía
 
                 // Reiniciar colores de validación
-                this.logic.initFieldValidation();
+                AdminPanel.logic.initFieldValidation();
             },
 
             /**
              * Resetea el formulario de login.
              */
             resetLoginForm() {
-                if (this.dom.loginForm) this.dom.loginForm.reset();
-                if (this.dom.loginMessage) this.ui.showStatus(this.dom.loginMessage, "", false, 1); // Limpia mensajes
+                if (AdminPanel.dom.loginForm) AdminPanel.dom.loginForm.reset();
+                if (AdminPanel.dom.loginMessage) AdminPanel.ui.showStatus(AdminPanel.dom.loginMessage, "", false, 1); // Limpia mensajes
             },
 
             /**
@@ -350,21 +381,21 @@ document.addEventListener('DOMContentLoaded', () => {
              * @param {boolean} isDisabled True para deshabilitar, false para habilitar.
              */
             setFormActionsDisabled(isDisabled) {
-                if (this.dom.savePadBtn) this.dom.savePadBtn.disabled = isDisabled;
-                if (this.dom.deletePadBtn) this.dom.deletePadBtn.disabled = isDisabled;
-                if (this.dom.duplicatePadBtn) this.dom.duplicatePadBtn.disabled = isDisabled;
+                if (AdminPanel.dom.savePadBtn) AdminPanel.dom.savePadBtn.disabled = isDisabled;
+                if (AdminPanel.dom.deletePadBtn) AdminPanel.dom.deletePadBtn.disabled = isDisabled;
+                if (AdminPanel.dom.duplicatePadBtn) AdminPanel.dom.duplicatePadBtn.disabled = isDisabled;
             },
 
             /**
              * Actualiza las estadísticas del dashboard.
              */
             updateDashboardStats() {
-                this.state.totalAppsInList = this.logic.calculateTotalApps();
-                if (this.dom.padCountDashboard) {
-                    this.dom.padCountDashboard.textContent = Array.isArray(this.state.allPadsCache) ? this.state.allPadsCache.length : 0;
+                AdminPanel.state.totalAppsInList = AdminPanel.logic.calculateTotalApps();
+                if (AdminPanel.dom.padCountDashboard) {
+                    AdminPanel.dom.padCountDashboard.textContent = Array.isArray(AdminPanel.state.allPadsCache) ? AdminPanel.state.allPadsCache.length : 0;
                 }
-                if (this.dom.appsTotalDashboard) {
-                    this.dom.appsTotalDashboard.textContent = this.state.totalAppsInList;
+                if (AdminPanel.dom.appsTotalDashboard) {
+                    AdminPanel.dom.appsTotalDashboard.textContent = AdminPanel.state.totalAppsInList;
                 }
             },
 
@@ -390,35 +421,44 @@ document.addEventListener('DOMContentLoaded', () => {
              * Renderiza la lista de aplicaciones actuales, aplicando un filtro si se provee.
              */
             renderCurrentApps(filter = "") {
-                if (!this.dom.currentAppsList) return;
+                if (!AdminPanel.dom.currentAppsList) return;
                 const filterLower = filter.toLowerCase();
-                const filteredApps = this.state.currentApps.filter(app => {
-                    const appString = `${app.marca || ''} ${app.serie || ''} ${app.litros || ''} ${app.año || ''} ${app.especificacion || ''}`.toLowerCase();
+                const filteredApps = AdminPanel.state.currentApps.filter(app => {
+                    const appString = `${app.marca || ''} ${app.serie || ''} ${app.litros || ''} ${app.año || ''} ${app.especificacion || ''} ${app.posicion || ''}`.toLowerCase();
                     return appString.includes(filterLower);
                 });
 
                 if (filteredApps.length === 0) {
-                    if (this.state.currentApps.length > 0 && filter) {
-                        this.dom.currentAppsList.innerHTML = `<li class="empty-list">No hay coincidencias para "${filter}".</li>`;
+                    if (AdminPanel.state.currentApps.length > 0 && filter) {
+                        AdminPanel.dom.currentAppsList.innerHTML = `<li class="empty-list">No hay coincidencias para "${filter}".</li>`;
                     } else {
-                        this.dom.currentAppsList.innerHTML = '<li class="empty-list">Ninguna todavía</li>';
+                        AdminPanel.dom.currentAppsList.innerHTML = '<li class="empty-list">Ninguna todavía</li>';
                     }
                     return;
                 }
 
-                this.dom.currentAppsList.innerHTML = filteredApps.map((app) => {
-                    const originalIndex = this.state.currentApps.findIndex(originalApp => originalApp === app);
+                AdminPanel.dom.currentAppsList.innerHTML = filteredApps.map((app) => {
+                    const originalIndex = AdminPanel.state.currentApps.findIndex(originalApp => originalApp === app);
                     const marca = app?.marca || '';
                     const serie = app?.serie || '';
                     const litros = app?.litros || '';
                     const anio = app?.año || '';
                     const espec = app?.especificacion || '';
+                    const posicion = app?.posicion || 'Delantera'; // Default fallback
+
+                    // Colores visuales para la posición
+                    const posColor = posicion === 'Trasera' ? '#ef4444' : '#3b82f6'; // Rojo vs Azul
+                    const posBg = posicion === 'Trasera' ? 'rgba(239, 68, 68, 0.1)' : 'rgba(59, 130, 246, 0.1)';
+
                     const details = [litros, anio, espec].filter(Boolean).join(' | ');
                     return `
                         <li>
                             <div class="app-info">
                                 <strong>${marca} ${serie}</strong>
-                                ${details ? `<span class="app-details">${details}</span>` : ''}
+                                <div style="display:flex; gap: 0.5rem; align-items:center; margin-top:0.2rem;">
+                                    <span class="app-details" style="background:${posBg}; color:${posColor}; font-weight:700; border: 1px solid ${posColor};">${posicion.toUpperCase()}</span>
+                                    ${details ? `<span class="app-details">${details}</span>` : ''}
+                                </div>
                             </div>
                             <div class="app-actions">
                                 <button type="button" class="app-action-btn edit-app-btn" data-index="${originalIndex}" title="Editar App">
@@ -436,84 +476,93 @@ document.addEventListener('DOMContentLoaded', () => {
              * Carga los datos de una aplicación en el formulario para edición.
              */
             loadAppDataIntoForm(index) {
-                if (!Array.isArray(this.state.currentApps) || index < 0 || index >= this.state.currentApps.length) return;
-                const app = this.state.currentApps[index];
+                if (!Array.isArray(AdminPanel.state.currentApps) || index < 0 || index >= AdminPanel.state.currentApps.length) return;
+                const app = AdminPanel.state.currentApps[index];
                 if (!app) return;
 
-                this.state.editingAppIndex = index;
-                if (this.dom.editingAppIndexInput) this.dom.editingAppIndexInput.value = index;
-                if (this.dom.appMarca) this.dom.appMarca.value = app.marca || '';
-                if (this.dom.appSerie) this.dom.appSerie.value = app.serie || '';
-                if (this.dom.appLitros) this.dom.appLitros.value = app.litros || '';
-                if (this.dom.appAnio) this.dom.appAnio.value = app.año || '';
-                if (this.dom.appEspec) this.dom.appEspec.value = app.especificacion || '';
+                AdminPanel.state.editingAppIndex = index;
+                if (AdminPanel.dom.editingAppIndexInput) AdminPanel.dom.editingAppIndexInput.value = index;
+                if (AdminPanel.dom.appMarca) AdminPanel.dom.appMarca.value = app.marca || '';
+                if (AdminPanel.dom.appSerie) AdminPanel.dom.appSerie.value = app.serie || '';
+                if (AdminPanel.dom.appLitros) AdminPanel.dom.appLitros.value = app.litros || '';
+                if (AdminPanel.dom.appAnio) AdminPanel.dom.appAnio.value = app.año || '';
+                if (AdminPanel.dom.appEspec) AdminPanel.dom.appEspec.value = app.especificacion || '';
 
-                if (this.dom.appAnio) this.logic.validateField(this.dom.appAnio, this.config.anioRegex);
-                if (this.dom.appMarca) this.logic.updateSerieDatalist(app.marca || "");
+                // CARGAR POSICIÓN
+                const savedPos = app.posicion || 'Delantera';
+                if (AdminPanel.dom.appPosicionValue) AdminPanel.dom.appPosicionValue.value = savedPos;
+                const toggles = document.querySelectorAll('#app-form .position-toggle');
+                toggles.forEach(t => {
+                    if (t.dataset.position === savedPos) t.classList.add('active');
+                    else t.classList.remove('active');
+                });
 
-                if (this.dom.addAppButtonText) this.dom.addAppButtonText.textContent = "Actualizar App";
-                if (this.dom.addUpdateAppBtn) {
-                    this.dom.addUpdateAppBtn.classList.remove('btn-tertiary');
-                    this.dom.addUpdateAppBtn.classList.add('btn-primary');
+                if (AdminPanel.dom.appAnio) AdminPanel.logic.validateField(AdminPanel.dom.appAnio, AdminPanel.config.anioRegex);
+                if (AdminPanel.dom.appMarca) AdminPanel.logic.updateSerieDatalist(app.marca || "");
+
+                if (AdminPanel.dom.addAppButtonText) AdminPanel.dom.addAppButtonText.textContent = "Actualizar App";
+                if (AdminPanel.dom.addUpdateAppBtn) {
+                    AdminPanel.dom.addUpdateAppBtn.classList.remove('btn-tertiary');
+                    AdminPanel.dom.addUpdateAppBtn.classList.add('btn-primary');
                 }
-                if (this.dom.cancelEditAppBtn) this.dom.cancelEditAppBtn.style.display = 'inline-flex';
-                if (this.dom.appFormDescription) this.dom.appFormDescription.textContent = `Editando: ${app.marca || ''} ${app.serie || ''}`;
-                if (this.dom.appMarca) this.dom.appMarca.focus();
+                if (AdminPanel.dom.cancelEditAppBtn) AdminPanel.dom.cancelEditAppBtn.style.display = 'inline-flex';
+                if (AdminPanel.dom.appFormDescription) AdminPanel.dom.appFormDescription.textContent = `Editando: ${app.marca || ''} ${app.serie || ''}`;
+                if (AdminPanel.dom.appMarca) AdminPanel.dom.appMarca.focus();
 
                 // Actualizar colores
-                this.logic.initFieldValidation();
+                AdminPanel.logic.initFieldValidation();
             },
 
             /**
              * Carga los datos de una pastilla (por ID) en el formulario principal.
              */
             loadPadDataIntoForms(docId) {
-                const padData = this.state.allPadsCache.find(p => p.id === docId);
+                const padData = AdminPanel.state.allPadsCache.find(p => p.id === docId);
                 if (!padData) {
                     console.error("No se encontró la pastilla en el cache con ID:", docId);
                     return;
                 }
 
                 // Hacemos una copia profunda para la comparación
-                this.state.originalPadSnapshot = JSON.parse(JSON.stringify(padData));
+                AdminPanel.state.originalPadSnapshot = JSON.parse(JSON.stringify(padData));
 
-                this.state.currentEditingId = docId;
-                if (this.dom.padRef) this.dom.padRef.value = (Array.isArray(padData.ref) ? padData.ref : []).join(', ');
-                if (this.dom.padOem) this.dom.padOem.value = (Array.isArray(padData.oem) ? padData.oem : []).join(', ');
-                if (this.dom.padFmsi) this.dom.padFmsi.value = (Array.isArray(padData.fmsi) ? padData.fmsi : []).join(', ');
-                if (this.dom.padPosicion) this.dom.padPosicion.value = padData.posición || 'Delantera';
+                AdminPanel.state.currentEditingId = docId;
+                if (AdminPanel.dom.padRef) AdminPanel.dom.padRef.value = (Array.isArray(padData.ref) ? padData.ref : []).join(', ');
+                if (AdminPanel.dom.padOem) AdminPanel.dom.padOem.value = (Array.isArray(padData.oem) ? padData.oem : []).join(', ');
+                if (AdminPanel.dom.padFmsi) AdminPanel.dom.padFmsi.value = (Array.isArray(padData.fmsi) ? padData.fmsi : []).join(', ');
+                // NOTA: Ya no cargamos padPosicion global
 
-                if (this.dom.padMedidas) {
-                    if (typeof padData.medidas === 'string') this.dom.padMedidas.value = padData.medidas || '';
-                    else if (Array.isArray(padData.medidas)) this.dom.padMedidas.value = padData.medidas.join(', ');
-                    else this.dom.padMedidas.value = '';
+                if (AdminPanel.dom.padMedidas) {
+                    if (typeof padData.medidas === 'string') AdminPanel.dom.padMedidas.value = padData.medidas || '';
+                    else if (Array.isArray(padData.medidas)) AdminPanel.dom.padMedidas.value = padData.medidas.join(', ');
+                    else AdminPanel.dom.padMedidas.value = '';
                 }
-                if (this.dom.padMedidas) this.logic.validateField(this.dom.padMedidas, this.config.medidasRegex);
+                if (AdminPanel.dom.padMedidas) AdminPanel.logic.validateField(AdminPanel.dom.padMedidas, AdminPanel.config.medidasRegex);
 
-                if (this.dom.padImagenes) this.dom.padImagenes.value = (Array.isArray(padData.imagenes) ? padData.imagenes : []).join(', ');
-                this.ui.renderImagePreview();
+                if (AdminPanel.dom.padImagenes) AdminPanel.dom.padImagenes.value = (Array.isArray(padData.imagenes) ? padData.imagenes : []).join(', ');
+                AdminPanel.ui.renderImagePreview();
 
-                this.state.currentApps = Array.isArray(padData.aplicaciones) ? JSON.parse(JSON.stringify(padData.aplicaciones)) : [];
+                AdminPanel.state.currentApps = Array.isArray(padData.aplicaciones) ? JSON.parse(JSON.stringify(padData.aplicaciones)) : [];
 
                 const firstRefId = (Array.isArray(padData.ref) && padData.ref.length > 0) ? padData.ref[0] : '';
-                if (this.dom.formModeTitle) this.dom.formModeTitle.textContent = `Editando Pastilla: ${firstRefId}`;
-                if (this.dom.saveButtonText) this.dom.saveButtonText.textContent = "Actualizar Pastilla";
-                if (this.dom.savePadBtn) {
-                    this.dom.savePadBtn.classList.remove('btn-danger', 'btn-secondary');
-                    this.dom.savePadBtn.classList.add('btn-primary');
+                if (AdminPanel.dom.formModeTitle) AdminPanel.dom.formModeTitle.textContent = `Editando Pastilla: ${firstRefId}`;
+                if (AdminPanel.dom.saveButtonText) AdminPanel.dom.saveButtonText.textContent = "Actualizar Pastilla";
+                if (AdminPanel.dom.savePadBtn) {
+                    AdminPanel.dom.savePadBtn.classList.remove('btn-danger', 'btn-secondary');
+                    AdminPanel.dom.savePadBtn.classList.add('btn-primary');
                 }
-                if (this.dom.deletePadBtn) this.dom.deletePadBtn.style.display = 'inline-flex';
-                if (this.dom.duplicatePadBtn) this.dom.duplicatePadBtn.style.display = 'inline-flex';
-                if (this.dom.clearSearchBtn) this.dom.clearSearchBtn.style.display = 'inline-flex';
-                if (this.dom.searchResults) this.dom.searchResults.innerHTML = '';
+                if (AdminPanel.dom.deletePadBtn) AdminPanel.dom.deletePadBtn.style.display = 'inline-flex';
+                if (AdminPanel.dom.duplicatePadBtn) AdminPanel.dom.duplicatePadBtn.style.display = 'inline-flex';
+                if (AdminPanel.dom.clearSearchBtn) AdminPanel.dom.clearSearchBtn.style.display = 'inline-flex';
+                if (AdminPanel.dom.searchResults) AdminPanel.dom.searchResults.innerHTML = '';
 
-                this.ui.renderCurrentApps();
-                this.ui.resetAppForm();
-                this.ui.setActiveSection('dashboard');
-                if (this.dom.padRef) this.dom.padRef.focus();
+                AdminPanel.ui.renderCurrentApps();
+                AdminPanel.ui.resetAppForm();
+                AdminPanel.ui.setActiveSection('dashboard');
+                if (AdminPanel.dom.padRef) AdminPanel.dom.padRef.focus();
 
                 // Actualizar colores con los datos cargados
-                this.logic.initFieldValidation();
+                AdminPanel.logic.initFieldValidation();
             },
 
             /**
@@ -542,9 +591,9 @@ document.addEventListener('DOMContentLoaded', () => {
              * Renderiza el log de historial en la tabla. (VERSIÓN MEJORADA 2.10)
              */
             renderHistoryLog(historyDocs) {
-                if (!this.dom.historyLogTableBody) return;
+                if (!AdminPanel.dom.historyLogTableBody) return;
                 if (historyDocs.length === 0) {
-                    this.dom.historyLogTableBody.innerHTML = `
+                    AdminPanel.dom.historyLogTableBody.innerHTML = `
                         <tr class="empty-row-placeholder">
                             <td colspan="4">No hay historial de cambios todavía.</td>
                         </tr>`; // <-- Colspan es 4
@@ -578,28 +627,28 @@ document.addEventListener('DOMContentLoaded', () => {
                         </tr>
                     `;
                 });
-                this.dom.historyLogTableBody.innerHTML = html;
+                AdminPanel.dom.historyLogTableBody.innerHTML = html;
             },
 
             /**
              * Actualiza el indicador visual de conexión a Firebase.
              */
             setConnectionStatus(isSuccess, message) {
-                if (!this.dom.connectionStatus || !this.dom.connectionStatusText) return;
-                const icon = this.dom.connectionStatus.querySelector('.material-icons-outlined');
+                if (!AdminPanel.dom.connectionStatus || !AdminPanel.dom.connectionStatusText) return;
+                const icon = AdminPanel.dom.connectionStatus.querySelector('.material-icons-outlined');
                 if (!icon) return;
-                this.dom.connectionStatus.classList.remove('status-loading', 'status-success', 'status-error');
+                AdminPanel.dom.connectionStatus.classList.remove('status-loading', 'status-success', 'status-error');
                 if (isSuccess === true) {
-                    this.dom.connectionStatus.classList.add('status-success');
+                    AdminPanel.dom.connectionStatus.classList.add('status-success');
                     icon.textContent = 'check_circle';
                 } else if (isSuccess === false) {
-                    this.dom.connectionStatus.classList.add('status-error');
+                    AdminPanel.dom.connectionStatus.classList.add('status-error');
                     icon.textContent = 'error';
                 } else {
-                    this.dom.connectionStatus.classList.add('status-loading');
+                    AdminPanel.dom.connectionStatus.classList.add('status-loading');
                     icon.textContent = 'sync';
                 }
-                this.dom.connectionStatusText.textContent = message;
+                AdminPanel.dom.connectionStatusText.textContent = message;
             },
         },
 
@@ -650,16 +699,16 @@ document.addEventListener('DOMContentLoaded', () => {
              * Inicializa la validación visual en todos los inputs relevantes.
              */
             initFieldValidation() {
-                const forms = [this.dom.padFormMain, this.dom.appForm];
+                const forms = [AdminPanel.dom.padFormMain, AdminPanel.dom.appForm];
                 forms.forEach(form => {
                     if (!form) return;
                     const inputs = form.querySelectorAll('input:not([type="hidden"]), select, textarea');
                     inputs.forEach(input => {
                         // Estado inicial
-                        this.logic.updateFieldVisuals(input);
+                        AdminPanel.logic.updateFieldVisuals(input);
                         // Listeners
-                        input.addEventListener('input', () => this.logic.updateFieldVisuals(input));
-                        input.addEventListener('change', () => this.logic.updateFieldVisuals(input));
+                        input.addEventListener('input', () => AdminPanel.logic.updateFieldVisuals(input));
+                        input.addEventListener('change', () => AdminPanel.logic.updateFieldVisuals(input));
                     });
                 });
             },
@@ -668,7 +717,7 @@ document.addEventListener('DOMContentLoaded', () => {
              * Genera la estructura de datos para autocompletado.
              */
             generateAutocompleteData(pads) {
-                this.state.autocompleteData = {};
+                AdminPanel.state.autocompleteData = {};
                 if (!Array.isArray(pads)) return;
                 for (const pad of pads) {
                     if (Array.isArray(pad.aplicaciones)) {
@@ -676,11 +725,11 @@ document.addEventListener('DOMContentLoaded', () => {
                             const marca = (app.marca || "").trim();
                             const serie = (app.serie || "").trim();
                             if (marca) {
-                                if (!this.state.autocompleteData[marca]) {
-                                    this.state.autocompleteData[marca] = new Set();
+                                if (!AdminPanel.state.autocompleteData[marca]) {
+                                    AdminPanel.state.autocompleteData[marca] = new Set();
                                 }
                                 if (serie) {
-                                    this.state.autocompleteData[marca].add(serie);
+                                    AdminPanel.state.autocompleteData[marca].add(serie);
                                 }
                             }
                         }

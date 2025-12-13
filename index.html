@@ -242,20 +242,9 @@
                                             class="text-input" required> </div>
                                     <div class="form-group"> <label for="pad-oem" class="input-label">OEM (separados por
                                             comma)</label> <input type="text" id="pad-oem" class="text-input"> </div>
-                                    <div class="form-group"> <label for="pad-fmsi" class="input-label">FMSI (separadas
+                                    <div class="form-group">
+                                        <label for="pad-fmsi" class="input-label">FMSI (separadas
                                             por comma)</label> <input type="text" id="pad-fmsi" class="text-input">
-                                    </div>
-                                    <div class="form-group"> <label class="input-label">Posición</label>
-                                        <div class="position-toggle-group">
-                                            <button type="button" class="position-toggle active"
-                                                data-position="Delantera">
-                                                Delantera
-                                            </button>
-                                            <button type="button" class="position-toggle" data-position="Trasera">
-                                                Trasera
-                                            </button>
-                                        </div>
-                                        <input type="hidden" id="pad-posicion-value" value="Delantera">
                                     </div>
                                     <div class="form-group">
                                         <label for="pad-medidas" class="input-label">Medidas (separadas por
@@ -320,6 +309,19 @@
                                         <label for="app-anio" class="input-label">Año(s)</label>
                                         <input type="text" id="app-anio" class="text-input"
                                             placeholder="Ej: 99 o 99-05">
+                                    </div>
+                                    <div class="form-group span-2"> <label class="input-label">Posición del
+                                            Vehículo</label>
+                                        <div class="position-toggle-group">
+                                            <button type="button" class="position-toggle active"
+                                                data-position="Delantera">
+                                                Delantera
+                                            </button>
+                                            <button type="button" class="position-toggle" data-position="Trasera">
+                                                Trasera
+                                            </button>
+                                        </div>
+                                        <input type="hidden" id="app-posicion-value" value="Delantera">
                                     </div>
                                     <div class="form-group span-2"> <label for="app-especificacion"
                                             class="input-label">Especificación (Opcional)</label> <input type="text"

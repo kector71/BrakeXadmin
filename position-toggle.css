@@ -10,12 +10,14 @@
 
 .position-toggle {
     flex: 1;
-    padding: calc(var(--base-padding) * 0.6) calc(var(--base-padding) * 1);
+    padding: calc(var(--base-padding) * 0.4) calc(var(--base-padding) * 0.8) !important;
+    /* Smaller padding */
     border: 1px solid var(--input-border);
     border-radius: var(--base-radius);
     background-color: var(--input-bg);
     color: var(--text-color-secondary);
-    font-size: calc(var(--base-font-size) * 0.9);
+    font-size: 0.85rem !important;
+    /* Smaller font */
     font-weight: 500;
     cursor: pointer;
     transition: all 0.2s ease;
@@ -27,27 +29,29 @@
     background-color: rgba(59, 130, 246, 0.05);
 }
 
-.position-toggle.active {
-    border-color: var(--color-blue);
-    background-color: rgba(59, 130, 246, 0.15);
-    color: var(--color-blue);
-    font-weight: 600;
+
+/* Colores Específicos para Delantera y Trasera */
+.position-toggle[data-position="Delantera"].active {
+    background: linear-gradient(135deg, var(--color-blue) 0%, var(--color-blue-dark) 100%) !important;
+    border-color: transparent !important;
+    color: #ffffff !important;
+    box-shadow: 0 4px 10px rgba(59, 130, 246, 0.4);
 }
 
-/* Dark mode */
-.lp-dark .position-toggle {
-    border-color: var(--input-border);
-    background-color: var(--input-bg);
-    color: var(--text-color-secondary);
+.position-toggle[data-position="Trasera"].active {
+    background: linear-gradient(135deg, var(--color-red) 0%, var(--color-red-dark) 100%) !important;
+    border-color: transparent !important;
+    color: #ffffff !important;
+    box-shadow: 0 4px 10px rgba(239, 68, 68, 0.4);
 }
 
-.lp-dark .position-toggle:hover {
-    border-color: var(--input-focus-border);
-    background-color: rgba(96, 165, 250, 0.1);
+/* Dark mode adjustments (Maintain saturation) */
+.lp-dark .position-toggle[data-position="Delantera"].active {
+    background: linear-gradient(135deg, var(--color-blue) 0%, #1e40af 100%) !important;
+    box-shadow: 0 4px 10px rgba(59, 130, 246, 0.3);
 }
 
-.lp-dark .position-toggle.active {
-    border-color: var(--color-blue);
-    background-color: rgba(96, 165, 250, 0.2);
-    color: var(--color-blue);
+.lp-dark .position-toggle[data-position="Trasera"].active {
+    background: linear-gradient(135deg, var(--color-red) 0%, #991b1b 100%) !important;
+    box-shadow: 0 4px 10px rgba(239, 68, 68, 0.3);
 }
