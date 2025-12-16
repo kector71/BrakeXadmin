@@ -103,3 +103,40 @@ select option {
     background-color: var(--bg-color-card) !important;
     color: var(--text-color-primary) !important;
 }
+
+/* ===================================== */
+/* FIX ICONO TAPADO EN LOGIN             */
+/* ===================================== */
+
+/* Asegurar espacio para el icono a la izquierda */
+.text-input.input-with-icon {
+    padding-left: 3.2rem !important;
+    /* Espacio generoso para el icono */
+}
+
+/* Asegurar espacio para el toggle de contraseña a la derecha */
+.input-wrapper-with-icon .text-input[type="password"] {
+    padding-right: 3rem !important;
+}
+
+/* Asegurar que el icono esté siempre visible y centrado */
+.input-icon {
+    z-index: 10 !important;
+    top: 50% !important;
+    transform: translateY(-50%) !important;
+    left: 1rem !important;
+    /* Ajuste fino de posición */
+}
+
+/* Ajuste para el botón de toggle password */
+.btn-icon-toggle {
+    z-index: 10 !important;
+    top: 50% !important;
+    transform: translateY(-50%) !important;
+}
+
+/* Fix para placeholders que se cortan */
+.text-input::placeholder {
+    opacity: 0.7;
+    overflow: visible;
+}

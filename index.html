@@ -15,6 +15,7 @@
     <link rel="stylesheet" href="input-fix.css">
     <link rel="stylesheet" href="actions-fix.css">
     <link rel="stylesheet" href="position-toggle.css">
+    <link rel="stylesheet" href="actions-improvements.css">
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 
@@ -184,7 +185,7 @@
                 <h1 id="page-title">Dashboard</h1>
 
                 <div id="dashboard" class="content-section active">
-                    <div class="card-grid cols-2">
+                    <div class="dashboard-stats-bar">
                         <div class="stat-card accent-blue">
                             <span class="material-icons-outlined stat-icon">inventory_2</span>
                             <div class="stat-info">
@@ -199,23 +200,28 @@
                                 <span class="stat-label">Aplicaciones Totales</span>
                             </div>
                         </div>
-                    </div>
 
-                    <div class="card card-compact">
-                        <h2 class="card-title">Estado de la Base de Datos</h2>
-                        <p class="card-description">Los datos se cargan en tiempo real desde Firebase Firestore.
-                            Cualquier cambio se guardará automáticamente en la nube.</p>
-                        <div id="connection-status" class="status-box status-loading" role="status" aria-live="polite">
-                            <span class="material-icons-outlined">sync</span>
-                            <span id="connection-status-text">Conectando...</span>
+                        <div class="card card-compact"
+                            style="display: flex; flex-direction: column; justify-content: center;">
+                            <div
+                                style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.5rem;">
+                                <h2 class="card-title" style="margin: 0;">Estado DB</h2>
+                                <div id="connection-status" class="status-box status-loading" role="status"
+                                    aria-live="polite" style="padding: 0.3rem 0.6rem;">
+                                    <span class="material-icons-outlined" style="font-size: 1rem;">sync</span>
+                                    <span id="connection-status-text" style="font-size: 0.8rem;">Conectando...</span>
+                                </div>
+                            </div>
+                            <p class="card-description" style="margin:0; font-size: 0.8rem;">Sincronización en tiempo
+                                real con Firebase Firestore.</p>
                         </div>
                     </div>
                     <div class="edit-layout-grid">
                         <div class="layout-col-main">
-                            <div class="card">
-                                <h2 class="card-title">Buscar Pastilla para Editar</h2>
-                                <div class="form-group">
-                                    <label for="search-type" class="input-label">Buscar por:</label>
+                            <div class="card card-compact" id="search-card">
+                                <h2 class="card-title" style="margin-bottom: 0.5rem;">Buscar Pastilla</h2>
+                                <div class="form-group" style="margin-bottom: 0;">
+                                    <label for="search-type" class="input-label label-hidden">Buscar por:</label>
                                     <div class="search-wrapper">
                                         <select id="search-type" class="select-input search-type-select">
                                             <option value="ref">Referencia</option>
@@ -460,7 +466,7 @@
         });
     </script>
     <script type="module" src="admin-script.js"></script>
-    <script src="position-toggle.js"></script>
+
 </body>
 
 

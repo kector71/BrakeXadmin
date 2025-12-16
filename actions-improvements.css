@@ -1,0 +1,237 @@
+/* Mejoras adicionales para la sección de Acciones Principales - Diseño Compacto Elaborado */
+
+/* Card de Acciones con un diseño más premium y compacto */
+#save-pad-status {
+    display: block;
+    margin-bottom: 0.5rem !important;
+    font-size: calc(var(--base-font-size) * 0.85);
+    font-weight: 500;
+}
+
+/* Shimmer effect para el botón principal */
+@keyframes shimmer {
+    0% {
+        background-position: -200% 0;
+    }
+
+    100% {
+        background-position: 200% 0;
+    }
+}
+
+/* Botón principal más compacto pero elaborado */
+.action-button-group .btn-cta {
+    position: relative;
+    background: linear-gradient(135deg, #3b82f6 0%, #2563eb 50%, #1d4ed8 100%);
+    border: 2px solid rgba(255, 255, 255, 0.2);
+    box-shadow:
+        0 4px 12px rgba(59, 130, 246, 0.3),
+        inset 0 1px 0 rgba(255, 255, 255, 0.2),
+        inset 0 -1px 0 rgba(0, 0, 0, 0.1);
+    font-size: calc(var(--base-font-size) * 0.95) !important;
+    padding: calc(var(--base-padding) * 0.75) calc(var(--base-padding) * 1.2) !important;
+    font-weight: 600 !important;
+    letter-spacing: 0.01em;
+    overflow: hidden;
+}
+
+/* Borde decorativo superior */
+.action-button-group .btn-cta::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: linear-gradient(90deg,
+            transparent,
+            rgba(255, 255, 255, 0.6),
+            transparent);
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.action-button-group .btn-cta:hover::before {
+    opacity: 1;
+}
+
+/* Shimmer effect */
+.action-button-group .btn-cta::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg,
+            transparent,
+            rgba(255, 255, 255, 0.15),
+            transparent);
+    background-size: 200% 100%;
+    animation: shimmer 3s ease-in-out infinite;
+}
+
+.action-button-group .btn-cta:hover {
+    box-shadow:
+        0 6px 18px rgba(59, 130, 246, 0.45),
+        inset 0 1px 0 rgba(255, 255, 255, 0.3),
+        inset 0 -1px 0 rgba(0, 0, 0, 0.1);
+    transform: translateY(-2px);
+    border-color: rgba(255, 255, 255, 0.4);
+}
+
+.action-button-group .btn-cta .material-icons-outlined {
+    font-size: calc(var(--base-font-size) * 1.3) !important;
+    filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.2));
+    position: relative;
+    z-index: 1;
+}
+
+/* Animación de éxito */
+@keyframes successPulse {
+
+    0%,
+    100% {
+        box-shadow:
+            0 4px 12px rgba(16, 185, 129, 0.4),
+            inset 0 1px 0 rgba(255, 255, 255, 0.2);
+    }
+
+    50% {
+        box-shadow:
+            0 6px 20px rgba(16, 185, 129, 0.6),
+            inset 0 1px 0 rgba(255, 255, 255, 0.3);
+    }
+}
+
+.btn-cta.success {
+    background: linear-gradient(135deg, #10b981 0%, #059669 50%, #047857 100%) !important;
+    animation: successPulse 2s ease-in-out;
+    border-color: rgba(255, 255, 255, 0.3) !important;
+}
+
+/* Botones secundarios más pequeños y elaborados */
+.secondary-actions-group .btn {
+    font-size: calc(var(--base-font-size) * 0.85) !important;
+    padding: calc(var(--base-padding) * 0.6) calc(var(--base-padding) * 0.9) !important;
+    position: relative;
+    overflow: hidden;
+}
+
+.secondary-actions-group .btn-secondary {
+    background: linear-gradient(135deg, #f9fafb 0%, #e5e7eb 100%);
+    border: 1.5px solid var(--border-color);
+    font-weight: 600;
+    box-shadow:
+        0 2px 6px rgba(0, 0, 0, 0.08),
+        inset 0 1px 0 rgba(255, 255, 255, 0.5);
+}
+
+.secondary-actions-group .btn-secondary::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, transparent, rgba(59, 130, 246, 0.1));
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.secondary-actions-group .btn-secondary:hover::before {
+    opacity: 1;
+}
+
+.secondary-actions-group .btn-secondary:hover {
+    background: linear-gradient(135deg, #e5e7eb 0%, #d1d5db 100%);
+    border-color: var(--color-blue);
+    color: var(--color-blue);
+    transform: translateY(-1px);
+    box-shadow:
+        0 4px 10px rgba(59, 130, 246, 0.2),
+        inset 0 1px 0 rgba(255, 255, 255, 0.5);
+}
+
+.secondary-actions-group .btn-danger {
+    background: linear-gradient(135deg, #ef4444 0%, #dc2626 50%, #b91c1c 100%);
+    font-weight: 600;
+    border: 1.5px solid rgba(255, 255, 255, 0.2);
+    box-shadow:
+        0 3px 8px rgba(239, 68, 68, 0.3),
+        inset 0 1px 0 rgba(255, 255, 255, 0.2);
+}
+
+.secondary-actions-group .btn-danger::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, transparent, rgba(255, 255, 255, 0.1));
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.secondary-actions-group .btn-danger:hover::before {
+    opacity: 1;
+}
+
+.secondary-actions-group .btn-danger:hover {
+    box-shadow:
+        0 6px 16px rgba(239, 68, 68, 0.4),
+        inset 0 1px 0 rgba(255, 255, 255, 0.3);
+    transform: translateY(-1px);
+    border-color: rgba(255, 255, 255, 0.4);
+}
+
+/* Iconos en botones secundarios con mejor espaciado */
+.secondary-actions-group .btn .material-icons-outlined {
+    font-size: calc(var(--base-font-size) * 1.1) !important;
+    filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.15));
+}
+
+/* Dark mode adjustments */
+.lp-dark .action-button-group .btn-cta {
+    border-color: rgba(255, 255, 255, 0.15);
+    box-shadow:
+        0 4px 12px rgba(96, 165, 250, 0.3),
+        inset 0 1px 0 rgba(255, 255, 255, 0.15),
+        inset 0 -1px 0 rgba(0, 0, 0, 0.2);
+}
+
+.lp-dark .secondary-actions-group .btn-secondary {
+    background: linear-gradient(135deg, #4a5568 0%, #374151 100%);
+    border-color: rgba(255, 255, 255, 0.1);
+    box-shadow:
+        0 2px 6px rgba(0, 0, 0, 0.3),
+        inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+.lp-dark .secondary-actions-group .btn-secondary:hover {
+    background: linear-gradient(135deg, #5a6778 0%, #4a5568 100%);
+    border-color: var(--color-blue);
+    color: var(--color-blue);
+    box-shadow:
+        0 4px 10px rgba(96, 165, 250, 0.3),
+        inset 0 1px 0 rgba(255, 255, 255, 0.15);
+}
+
+.lp-dark .secondary-actions-group .btn-danger {
+    border-color: rgba(255, 255, 255, 0.15);
+    box-shadow:
+        0 3px 8px rgba(248, 113, 113, 0.3),
+        inset 0 1px 0 rgba(255, 255, 255, 0.15);
+}
+
+/* Icono animado en hover */
+.action-button-group .btn-cta:hover .material-icons-outlined {
+    animation: iconFloat 0.6s ease-in-out;
+}
+
+@keyframes iconFloat {
+
+    0%,
+    100% {
+        transform: translateY(0);
+    }
+
+    50% {
+        transform: translateY(-3px);
+    }
+}

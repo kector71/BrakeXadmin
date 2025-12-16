@@ -192,21 +192,27 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // --- NUEVO: Manejo de los Toggles de Posición ---
         initPositionToggles() {
-            const toggles = document.querySelectorAll('.position-toggle');
-            toggles.forEach(toggle => {
+            const appToggles = document.querySelectorAll('#app-form .position-toggle');
+            const hiddenInput = document.getElementById('app-posicion-value');
+
+            if (!hiddenInput) {
+                console.error("Error: Input hidden 'app-posicion-value' no encontrado.");
+            }
+
+            appToggles.forEach(toggle => {
                 toggle.addEventListener('click', (e) => {
+                    e.preventDefault();
                     const btn = e.currentTarget;
                     const group = btn.closest('.position-toggle-group');
-                    const hiddenInput = group.nextElementSibling; // El input hidden debe estar justo después
 
-                    // Quitar active de todos los hermanos
+                    // UI: Switch active class
                     group.querySelectorAll('.position-toggle').forEach(t => t.classList.remove('active'));
-                    // Activar el clickeado
                     btn.classList.add('active');
 
-                    // Actualizar valor
-                    if (hiddenInput && hiddenInput.tagName === 'INPUT') {
+                    // Data: Update hidden input
+                    if (hiddenInput) {
                         hiddenInput.value = btn.dataset.position;
+                        console.log("Posición seleccionada:", hiddenInput.value);
                     }
                 });
             });
@@ -488,8 +494,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (AdminPanel.dom.appAnio) AdminPanel.dom.appAnio.value = app.año || '';
                 if (AdminPanel.dom.appEspec) AdminPanel.dom.appEspec.value = app.especificacion || '';
 
-                // CARGAR POSICIÓN
-                const savedPos = app.posicion || 'Delantera';
+                // CARGAR POSICIÓN (Soporte para propiedad 'posicion' o 'position')
+                const savedPos = app.posicion || app.position || 'Delantera';
                 if (AdminPanel.dom.appPosicionValue) AdminPanel.dom.appPosicionValue.value = savedPos;
                 const toggles = document.querySelectorAll('#app-form .position-toggle');
                 toggles.forEach(t => {
@@ -1624,12 +1630,18 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
 
+            // Direct DOM access to ensure we get the latest value
+            const posicionInput = document.getElementById('app-posicion-value');
+            const currentPosicion = posicionInput ? posicionInput.value : 'Delantera';
+            console.log("Guardando App con posición:", currentPosicion);
+
             const app = {
                 marca: this.logic.standardizeText(this.dom.appMarca.value.trim(), 'none'),
                 serie: this.logic.standardizeText(this.dom.appSerie.value.trim(), 'none'),
                 litros: this.dom.appLitros?.value.trim() || '',
                 año: this.dom.appAnio?.value.trim() || '',
                 especificacion: this.dom.appEspec?.value.trim() || '',
+                posicion: currentPosicion
             };
 
             if (!app.marca || !app.serie) {

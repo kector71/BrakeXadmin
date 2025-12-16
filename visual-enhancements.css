@@ -327,201 +327,6 @@ html {
         transform: translateX(-10px);
     }
 
-}
-
-.stat-card:hover::before {
-    left: 100%;
-}
-
-.stat-card {
-    position: relative;
-    overflow: hidden;
-}
-
-/* Mejorar inputs con animación de label flotante */
-.form-group {
-    position: relative;
-}
-
-.text-input:focus+.input-label,
-.text-input:not(:placeholder-shown)+.input-label {
-    transform: translateY(-1.5rem) scale(0.85);
-    color: var(--color-blue);
-}
-
-/* Transición suave para cambios de tema */
-.lp-dark * {
-    transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
-}
-
-/* Efecto de profundidad en modales */
-.modal-overlay {
-    backdrop-filter: blur(4px);
-    -webkit-backdrop-filter: blur(4px);
-}
-
-.modal-card {
-    box-shadow: var(--shadow-lg);
-}
-
-/* Mejorar tabla de historial con hover suave */
-.history-log-table tbody tr {
-    transition: all 0.2s ease;
-}
-
-.history-log-table tbody tr:hover {
-    transform: scale(1.01);
-}
-
-/* Indicador de estado activo en inputs */
-.text-input:valid {
-    border-color: var(--color-green);
-}
-
-.text-input:invalid:not(:placeholder-shown) {
-    border-color: var(--color-red);
-}
-
-/* Mejorar preview de imágenes con zoom */
-.preview-image-wrapper {
-    transition: transform 0.3s ease, box-shadow 0.3s ease;
-}
-
-.preview-image-wrapper:hover {
-    transform: scale(1.05);
-    box-shadow: var(--shadow-md);
-    z-index: 10;
-}
-
-/* Efecto de carga en botones */
-.btn.loading {
-    position: relative;
-    color: transparent;
-    pointer-events: none;
-}
-
-.btn.loading::after {
-    content: '';
-    position: absolute;
-    width: 16px;
-    height: 16px;
-    top: 50%;
-    left: 50%;
-    margin-left: -8px;
-    margin-top: -8px;
-    border: 2px solid currentColor;
-    border-radius: 50%;
-    border-top-color: transparent;
-    animation: spin 0.6s linear infinite;
-}
-
-@keyframes spin {
-    to {
-        transform: rotate(360deg);
-    }
-}
-
-/* Mejorar resultados de búsqueda */
-.search-result-item {
-    transition: all 0.2s ease;
-}
-
-.search-result-item:hover {
-    background-color: var(--bg-color);
-    transform: translateX(4px);
-}
-
-/* Badge/Tag styles para mejor visualización */
-.badge {
-    display: inline-block;
-    padding: 0.25em 0.6em;
-    font-size: 0.75em;
-    font-weight: 600;
-    line-height: 1;
-    color: #fff;
-    text-align: center;
-    white-space: nowrap;
-    vertical-align: baseline;
-    border-radius: 0.25rem;
-}
-
-.badge-primary {
-    background-color: var(--color-blue);
-}
-
-.badge-success {
-    background-color: var(--color-green);
-}
-
-.badge-danger {
-    background-color: var(--color-red);
-}
-
-/* Tooltip simple */
-[data-tooltip] {
-    position: relative;
-}
-
-[data-tooltip]::after {
-    content: attr(data-tooltip);
-    position: absolute;
-    bottom: 100%;
-    left: 50%;
-    transform: translateX(-50%) translateY(-8px);
-    padding: 0.5rem 0.75rem;
-    background: rgba(0, 0, 0, 0.9);
-    color: white;
-    font-size: 0.75rem;
-    white-space: nowrap;
-    border-radius: 4px;
-    opacity: 0;
-    pointer-events: none;
-    transition: opacity 0.3s ease, transform 0.3s ease;
-}
-
-[data-tooltip]:hover::after {
-    opacity: 1;
-    transform: translateX(-50%) translateY(-4px);
-}
-
-/* Mejorar estado disabled */
-.btn:disabled,
-.text-input:disabled,
-.select-input:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
-    filter: grayscale(0.3);
-}
-
-/* Animación de éxito */
-@keyframes successPulse {
-
-    0%,
-    100% {
-        box-shadow: 0 0 0 0 rgba(56, 161, 105, 0.7);
-    }
-
-    50% {
-        box-shadow: 0 0 0 10px rgba(56, 161, 105, 0);
-    }
-}
-
-.success-animation {
-    animation: successPulse 0.6s ease-out;
-}
-
-/* Animación de error */
-@keyframes shake {
-
-    0%,
-    100% {
-        transform: translateX(0);
-    }
-
-    25% {
-        transform: translateX(-10px);
-    }
-
     75% {
         transform: translateX(10px);
     }
@@ -597,7 +402,7 @@ html {
     border-radius: 16px !important;
     transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
     overflow: hidden !important;
-    padding: 1.5rem !important;
+    padding: 0.8rem !important;
 }
 
 .lp-dark .stat-card {
@@ -634,41 +439,69 @@ html {
 /* 4. Modern Chunky Inputs - Maximum Visibility Mode */
 .text-input,
 .select-input {
-    border-radius: 12px !important;
-    border: 2px solid #cbd5e1 !important;
-    /* Borde gris sólido de 2px */
-    background-color: #f8fafc !important;
+    border-radius: 6px !important;
+    border: 2px solid #cbd5e0 !important;
+    background-color: #ffffff !important;
     padding: 0.75rem 1rem !important;
     transition: all 0.25s ease !important;
     font-size: 0.95rem !important;
-    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05) !important;
-    /* Sombra sutil permanente */
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1), inset 0 1px 2px rgba(0, 0, 0, 0.05) !important;
+}
+
+/* Fix for icons overlapping text in login inputs */
+.text-input.input-with-icon {
+    padding-left: 3rem !important;
+}
+
+/* Fix for password toggle button overlapping text */
+.input-wrapper-with-icon .text-input[type="password"] {
+    padding-right: 2.8rem !important;
+}
+
+.text-input::placeholder,
+.select-input::placeholder {
+    color: #9ca3af !important;
+    opacity: 1 !important;
+}
+
+.text-input:hover,
+.select-input:hover {
+    border-color: #a0aec0 !important;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.12), inset 0 1px 2px rgba(0, 0, 0, 0.05) !important;
 }
 
 .text-input:focus,
 .select-input:focus {
     background-color: #ffffff !important;
     border-color: var(--color-blue) !important;
-    box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.2) !important;
-    transform: translateY(-2px);
+    box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.15), 0 4px 12px rgba(59, 130, 246, 0.1) !important;
+    transform: translateY(-1px);
 }
 
 .lp-dark .text-input,
 .lp-dark .select-input {
-    background-color: #1a202c !important;
-    /* Fondo oscuro pero no negro total */
-    border: 2px solid rgba(255, 255, 255, 0.25) !important;
-    /* Borde claro MUY visible */
+    background-color: #2d3748 !important;
+    border: 2px solid #4a5568 !important;
     color: #ffffff !important;
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3) !important;
-    /* Sombra para elevarlo */
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3), inset 0 1px 2px rgba(0, 0, 0, 0.2) !important;
+}
+
+.lp-dark .text-input::placeholder,
+.lp-dark .select-input::placeholder {
+    color: #718096 !important;
+}
+
+.lp-dark .text-input:hover,
+.lp-dark .select-input:hover {
+    border-color: #5a657d !important;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.4), inset 0 1px 2px rgba(0, 0, 0, 0.2) !important;
 }
 
 .lp-dark .text-input:focus,
 .lp-dark .select-input:focus {
     background-color: #2d3748 !important;
     border-color: var(--color-blue) !important;
-    box-shadow: 0 0 0 4px rgba(96, 165, 250, 0.4) !important;
+    box-shadow: 0 0 0 4px rgba(96, 165, 250, 0.2), 0 4px 12px rgba(96, 165, 250, 0.15) !important;
 }
 
 /* 5. Primary Button upgrade */
@@ -738,7 +571,7 @@ html {
     border: 1px solid transparent;
     border-radius: 10px;
     /* Slightly tighter radius */
-    padding: 0.6rem 1rem;
+    padding: 0.8rem 1rem;
     /* Significantly reduced padding */
     display: flex;
     justify-content: space-between;
@@ -748,7 +581,6 @@ html {
     transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
     animation: fadeIn 0.3s ease-out backwards;
     position: relative;
-    overflow: hidden;
 }
 
 .lp-dark .app-list li {
@@ -799,127 +631,44 @@ html {
 }
 
 /* Interactive Action Buttons - Compact */
-.app-actions {
-    display: flex;
-    gap: 0.25rem;
-    /* Closer buttons */
-    align-items: center;
-}
-
-.app-action-btn {
-    width: 30px;
-    /* Smaller touch target */
-    height: 30px;
+.app-list .app-action-btn {
+    padding: 0.4rem;
     border-radius: 6px;
-    border: none;
-    background: transparent;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
     color: var(--text-color-secondary);
-    transition: all 0.2s ease;
+    transition: all 0.2s;
+    background: transparent;
 }
 
-.app-action-btn .material-icons-outlined {
-    font-size: 1.1rem;
-    /* Smaller icons */
-}
-
-/* Edit Button Hover */
-.edit-app-btn:hover {
-    background-color: rgba(59, 130, 246, 0.1);
+.app-list .app-action-btn:hover {
+    background: rgba(0, 0, 0, 0.05);
     color: var(--color-blue);
+    transform: scale(1.1);
 }
 
-/* Delete Button Hover */
-.remove-app-btn:hover {
-    background-color: rgba(239, 68, 68, 0.1);
+.app-list .app-action-btn.remove-app-btn:hover {
+    background: rgba(239, 68, 68, 0.1);
     color: var(--color-red);
 }
 
-/* 3. History Table: Floating Rows Style */
-.history-log-table {
-    border-collapse: separate !important;
-    /* Critical for border-radius */
-    border-spacing: 0 0.5rem !important;
-    /* Space between rows */
+/* 3. Floating Action Buttons (Material Style) - Positioning Fix */
+.floating-buttons-container {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
 }
 
-.history-log-table th {
-    border-bottom: none !important;
-    color: var(--text-color-secondary);
-    font-size: 0.75rem;
-    text-transform: uppercase;
-    letter-spacing: 0.1em;
-    padding: 0 1rem 0.5rem 1rem !important;
-}
-
-.history-log-table td {
-    background: var(--bg-color-card);
-    border-top: 1px solid var(--border-color);
-    border-bottom: 1px solid var(--border-color);
-    border-left: none;
-    border-right: none;
-    padding: 1rem !important;
-}
-
-.history-log-table tr td:first-child {
-    border-left: 1px solid var(--border-color);
-    border-top-left-radius: 10px;
-    border-bottom-left-radius: 10px;
-}
-
-.history-log-table tr td:last-child {
-    border-right: 1px solid var(--border-color);
-    border-top-right-radius: 10px;
-    border-bottom-right-radius: 10px;
-}
-
-.history-log-table tbody tr {
-    transition: transform 0.2s ease, box-shadow 0.2s ease !important;
-}
-
-.history-log-table tbody tr:hover {
-    transform: scale(1.005) !important;
-    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
-    background: transparent !important;
-    /* Let td background handle it */
-    z-index: 1;
-    position: relative;
-}
-
-/* 4. Scrollbar Refinement (MacOS Style) */
-::-webkit-scrollbar {
-    width: 6px !important;
-    height: 6px !important;
-}
-
-::-webkit-scrollbar-thumb {
-    background-color: rgba(160, 174, 192, 0.5) !important;
-    border-radius: 10px !important;
-}
-
-::-webkit-scrollbar-thumb:hover {
-    background-color: rgba(160, 174, 192, 0.8) !important;
-}
-
-::-webkit-scrollbar-track {
-    background: transparent !important;
-}
-
-/* 5. Floating Action Button (Theme Toggle) */
 .material-btn {
-    width: 48px;
-    height: 48px;
-    border-radius: 50%;
-    border: none;
+    width: 50px;
+    height: 50px;
+    border-radius: 16px;
+    /* Soft square */
     background: var(--bg-color-card);
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
-    cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    border: 1px solid var(--border-color);
+    cursor: pointer;
     transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
     color: var(--text-color-primary);
 }
@@ -939,3 +688,66 @@ html {
 .form-group:hover .input-label {
     color: var(--color-blue);
 }
+
+/* ===================================== */
+/* REDESIGN: SEARCH CARD COMPACT         */
+/* ===================================== */
+
+#search-card {
+    border-left: 4px solid var(--color-blue);
+    /* Acento visual para identificarlo rǭpido */
+    overflow: visible;
+    /* Permitir sombras y focus rings */
+    padding: 0.5rem 0.8rem !important;
+    /* MÁS COMPACTO: Reducir padding interno */
+}
+
+#search-card .label-hidden {
+    display: none;
+    /* Ocultar el label "Buscar por:" */
+}
+
+#search-card .card-title {
+    font-size: 0.9rem !important;
+    /* MÁS COMPACTO: Título más pequeño */
+    margin-bottom: 0.25rem !important;
+    /* MÁS COMPACTO: Menos espacio debajo del título */
+    opacity: 0.8;
+}
+
+/* Contenedor Flex moderno */
+#search-card .search-wrapper {
+    display: grid;
+    grid-template-columns: 110px 1fr auto;
+    gap: 0.5rem;
+    height: auto;
+}
+
+/* Estilo para el BOTON (Derecha) */
+#search-card #search-btn {
+    border-radius: 0 8px 8px 0 !important;
+    margin: 0 !important;
+    box-shadow: none !important;
+    width: 45px;
+    /* MÁS COMPACTO: Botón más estrecho */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--color-blue);
+    color: white;
+    border: none !important;
+    transition: background-color 0.2s ease;
+    height: 100% !important;
+    padding: 0 !important;
+}
+
+#search-card #search-btn .material-icons-outlined {
+    font-size: 1.2rem !important;
+    /* MÁS COMPACTO: Icono más pequeño */
+}
+
+#search-card #search-btn:hover {
+    background: var(--color-blue-dark);
+}
+
+/* Modo Oscuro - Los inputs heredan estilos globales */
